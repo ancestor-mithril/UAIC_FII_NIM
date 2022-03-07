@@ -1,5 +1,5 @@
 BUILDDIR=build
-APP=main
+APP=test
 
 cxx:
 	export CXX=g++
@@ -10,20 +10,14 @@ builddir:
 clean:
 	rm -rf ${BUILDDIR}
 
-release: builddir cxx 
-	# cmake \ # TODO: Repair CmakeListss
-	# 	-D CMAKE_BUILD_TYPE=Release \
-	# 	-D CMAKE_CXX_COMPILER=g++ \
-	# 	-G "MinGW Makefiles"  \
-	# 	-S . \
-	# 	-B ${BUILDDIR}
-	# cmake --build ${BUILDDIR}
-	cd ${BUILDDIR} \
-	&& g++ -std=c++20 -fmodules-ts -xc++-system-header string \
-	&& g++ -std=c++20 -fmodules-ts -xc++-system-header iostream \
-	&& g++ -std=c++20 -fmodules-ts -c ../src/helloworld.cpp \
-	&& g++ -std=c++20 -fmodules-ts -c ../src/main.cpp \
-	&& g++ -std=c++20 helloworld.o main.o -o main 
+release: builddir cxx
+	cmake \
+		-D CMAKE_BUILD_TYPE=Release \
+		-D CMAKE_CXX_COMPILER=g++ \
+		-G "MinGW Makefiles"  \
+		-S . \
+		-B ${BUILDDIR}
+	cmake --build ${BUILDDIR}
 
 debug: builddir cxx
 	cmake \
