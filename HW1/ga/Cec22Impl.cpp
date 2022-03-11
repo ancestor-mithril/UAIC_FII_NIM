@@ -92,20 +92,6 @@ void shuffle(std::vector<double>& nums, const std::vector<std::size_t>& pos)
     for (auto i = 0; i < pos.size(); ++i) {
         nums[i] = aux[i];
     }
-
-    // Prefered version, but internal compiler error: in tsubst_copy, at
-    // cp/pt.c:16621 for map[pos[i]] = nums[i];
-    //
-    // TODO: Try to solve it
-    //
-    // std::unordered_map<int, double> map;
-    // map.reserve(pos.size());
-    // for (auto i = 0; i < nums.size(); ++i) {
-    //     map[pos[i]] = nums[i];
-    // }
-    // for (auto [index, value]: map) {
-    //     nums[index] = value;
-    // }
 }
 
 template <std::size_t Size>
@@ -124,11 +110,10 @@ double ackley_func(std::vector<double>& x, const std::vector<double>& shift,
                    const std::vector<std::vector<double>>& rotate,
                    bool shift_flag, bool rotate_flag)
 {
-    double sum1 = 0.0;
-    double sum2 = 0.0;
-
     const auto z =
         shift_rotate_transform(x, shift, rotate, 1.0, shift_flag, rotate_flag);
+    auto sum1 = 0.0;
+    auto sum2 = 0.0;
     for (auto i : z) {
         sum1 += i * i;
         sum2 += std::cos(2.0 * PI * i);
@@ -164,7 +149,7 @@ double discus_func(std::vector<double>& x, const std::vector<double>& shift,
     // assuming z.size() >= 1
     return std::accumulate(
         std::next(z.begin()), z.end(), z[0] * z[0] * 1000000.0,
-        [](auto f, auto elem) { return std::move(f) + elem * elem; });
+        [](auto f, auto elem) { return f + elem * elem; });
 }
 
 double ellips_func(std::vector<double>& x, const std::vector<double>& shift,
@@ -174,9 +159,8 @@ double ellips_func(std::vector<double>& x, const std::vector<double>& shift,
     const auto z =
         shift_rotate_transform(x, shift, rotate, 1.0, shift_flag, rotate_flag);
     auto i = 0;
-    const auto n = z.size(); // TODO:  z.size() vs n, which is better?
     return std::accumulate(
-        std::next(z.begin()), z.end(), 0.0, [&i, n](auto f, auto elem) {
+        std::next(z.begin()), z.end(), 0.0, [&i, n = z.size()](auto f, auto elem) {
             return std::move(f) + std::pow(10.0, 6.0 * (i++) / n) * elem * elem;
         });
 }
@@ -195,10 +179,11 @@ double escaffer6_func(std::vector<double>& x, const std::vector<double>& shift,
         const auto temp2 = 1.0 + 0.001 * (z[i] * z[i] + z[i + 1] * z[i + 1]);
         f += 0.5 + (temp1 * temp1 - 0.5) / (temp2 * temp2);
     }
+    const auto last = *std::prev(z.end()); // vs z[z.size() - 1]
     const auto temp1 =
-        std::sin(std::sqrt(z[z.size() - 1] * z[z.size() - 1] + z[0] * z[0]));
+        std::sin(std::sqrt(last * last + z[0] * z[0]));
     const auto temp2 =
-        1.0 + 0.001 * (z[z.size() - 1] * z[z.size() - 1] + z[0] * z[0]);
+        1.0 + 0.001 * (last * last + z[0] * z[0]);
     f += 0.5 + (temp1 * temp1 - 0.5) / (temp2 * temp2);
     return f;
 }
