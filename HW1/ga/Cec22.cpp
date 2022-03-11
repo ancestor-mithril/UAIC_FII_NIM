@@ -25,7 +25,7 @@ discus_func(std::vector<double>& x, const std::vector<double>& shift,
             const std::vector<std::vector<double>>& rotate, bool shift_flag,
             bool rotate_flag);
 
-// Ellipsoidal
+// High Conditioned Elliptic Function
 export double
 ellips_func(std::vector<double>& x, const std::vector<double>& shift,
             const std::vector<std::vector<double>>& rotate, bool shift_flag,
@@ -79,7 +79,7 @@ schwefel_func(std::vector<double>& x, const std::vector<double>& shift,
               const std::vector<std::vector<double>>& rotate, bool shift_flag,
               bool rotate_flag);
 
-// Schwefel's F7
+// Schaffer’s F7
 export double
 schaffer_F7_func(std::vector<double>& x, const std::vector<double>& shift,
                  const std::vector<std::vector<double>>& rotate,
@@ -112,19 +112,40 @@ katsuura_func(std::vector<double>& x, const std::vector<double>& shift,
 // Hybrid Function 1
 export double hf01(std::vector<double>& x, const std::vector<double>& shift,
                    const std::vector<std::vector<double>>& rotate,
-                   bool shift_flag, bool rotate_flag);
+                   const std::vector<std::size_t>& indices, bool shift_flag,
+                   bool rotate_flag);
 
 // Hybrid Function 2
 export double hf02(std::vector<double>& x, const std::vector<double>& shift,
                    const std::vector<std::vector<double>>& rotate,
-                   bool shift_flag, bool rotate_flag);
+                   const std::vector<std::size_t>& indices, bool shift_flag,
+                   bool rotate_flag);
 
 // Hybrid Function 3
 export double hf03(std::vector<double>& x, const std::vector<double>& shift,
                    const std::vector<std::vector<double>>& rotate,
+                   const std::vector<std::size_t>& indices, bool shift_flag,
+                   bool rotate_flag);
+
+// Composition Function 1
+export double cf01(std::vector<double>& x, const std::vector<double>& shift,
+                   const std::vector<std::vector<double>>& rotate,
                    bool shift_flag, bool rotate_flag);
 
 // Composition Function 1
+export double cf02(std::vector<double>& x, const std::vector<double>& shift,
+                   const std::vector<std::vector<double>>& rotate,
+                   bool shift_flag, bool rotate_flag);
+
+// Composition Function 1
+export double cf03(std::vector<double>& x, const std::vector<double>& shift,
+                   const std::vector<std::vector<double>>& rotate,
+                   bool shift_flag, bool rotate_flag);
+
+// Composition Function 1
+export double cf04(std::vector<double>& x, const std::vector<double>& shift,
+                   const std::vector<std::vector<double>>& rotate,
+                   bool shift_flag, bool rotate_flag);
 
 export int sanity_check();
 

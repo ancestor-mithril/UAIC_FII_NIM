@@ -24,6 +24,8 @@ rel1: clean builddir cxx # We need clean because building std modules comes with
 	&& g++ -std=c++20 -${OPT} -fmodules-ts -c -xc++-system-header functional \
 	&& g++ -std=c++20 -${OPT} -fmodules-ts -c -xc++-system-header cmath \
 	&& g++ -std=c++20 -${OPT} -fmodules-ts -c -xc++-system-header numeric \
+	&& g++ -std=c++20 -${OPT} -fmodules-ts -c -xc++-system-header unordered_map \
+	&& g++ -std=c++20 -${OPT} -fmodules-ts -c -xc++-system-header tuple \
 	&& g++ -std=c++20 -${OPT} -fmodules-ts -c ../ga/Cec22.cpp ../ga/Cec22Impl.cpp \
 	&& g++ -std=c++20 -${OPT} -fmodules-ts -c ../ga/main.cpp \
 	&& g++ -std=c++20 -${OPT} Cec22.o Cec22Impl.o main.o -o test.exe

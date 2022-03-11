@@ -21,6 +21,8 @@ add_custom_target(std_modules ALL
     COMMAND g++ -fmodules-ts -std=c++20 -${OPT} -c -xc++-system-header functional
     COMMAND g++ -fmodules-ts -std=c++20 -${OPT} -c -xc++-system-header cmath
     COMMAND g++ -fmodules-ts -std=c++20 -${OPT} -c -xc++-system-header numeric
+    COMMAND g++ -fmodules-ts -std=c++20 -${OPT} -c -xc++-system-header unordered_map
+    COMMAND g++ -fmodules-ts -std=c++20 -${OPT} -c -xc++-system-header tuple
 )
 
 function (prepare_for_module TGT)
