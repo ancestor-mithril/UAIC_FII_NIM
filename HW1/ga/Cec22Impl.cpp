@@ -126,11 +126,11 @@ double composition_function_calculator(const std::vector<double>& x,
             w_max = w[i];
         }
     }
-    
+
     if (w_max == 0.0) [[unlikely]] {
-        return std::accumulate(fit.begin(), fit.end(), 0.0, [](auto f, auto elem){
-            return f + elem / Size;
-        });
+        return std::accumulate(
+            fit.begin(), fit.end(), 0.0,
+            [](auto f, auto elem) { return f + elem / Size; });
     }
 
     const auto w_sum = std::accumulate(w.begin(), w.end(), 0.0);
@@ -453,15 +453,15 @@ hf01(std::vector<double>& x, const std::vector<double>& shift,
     auto z =
         shift_rotate_transform(x, shift, rotate, 1.0, shift_flag, rotate_flag);
     shuffle(z, indices);
-    const auto range = std::ceil(0.4 * z.size());
-    const auto end1 = std::next(z.begin(), range); // 0.4
-    const auto begin2 = std::next(end1);
-    const auto end2 = std::next(begin2, range); // another 0.4
-    const auto begin3 = std::next(end2);
 
-    std::vector<double> z1{z.begin(), end1};
-    std::vector<double> z2{begin2, end2};
-    std::vector<double> z3{begin3, z.end()};
+    const auto range = std::ceil(0.4 * z.size());
+    const auto margin_1 = std::next(z.begin(), range); // 0.4
+    const auto margin_2 = std::next(margin_1, range);  // another 0.4
+
+    std::vector<double> z1{z.begin(), margin_1};
+    std::vector<double> z2{margin_1, margin_2};
+    std::vector<double> z3{margin_2, z.end()};
+
     return bent_cigar_func(z1, shift, rotate, false, false) +
            hgbat_func(z2, shift, rotate, false, false) +
            rastrigin_func(z3, shift, rotate, false, false);
@@ -487,37 +487,31 @@ double cf01(std::vector<double>& x, const std::vector<double>& shift,
             const std::vector<std::vector<double>>& rotate, bool rotate_flag)
 {
     // asumming that shift.size and rotate.size is (at least) 5 * x.size
-    const auto shift_end_1 = std::next(shift.begin(), x.size());
-    const auto shift_begin_2 = std::next(shift_end_1);
-    const auto shift_end_2 = std::next(shift_begin_2, x.size());
-    const auto shift_begin_3 = std::next(shift_end_2);
-    const auto shift_end_3 = std::next(shift_begin_3, x.size());
-    const auto shift_begin_4 = std::next(shift_end_3);
-    const auto shift_end_4 = std::next(shift_begin_4, x.size());
-    const auto shift_begin_5 = std::next(shift_end_4);
-    const auto rotate_end_1 = std::next(rotate.begin(), x.size());
-    const auto rotate_begin_2 = std::next(rotate_end_1);
-    const auto rotate_end_2 = std::next(rotate_begin_2, x.size());
-    const auto rotate_begin_3 = std::next(rotate_end_2);
-    const auto rotate_end_3 = std::next(rotate_begin_3, x.size());
-    const auto rotate_begin_4 = std::next(rotate_end_3);
-    const auto rotate_end_4 = std::next(rotate_begin_4, x.size());
-    const auto rotate_begin_5 = std::next(rotate_end_4);
+    const auto shift_margin_1 = std::next(shift.begin(), x.size());
+    const auto shift_margin_2 = std::next(shift_margin_1, x.size());
+    const auto shift_margin_3 = std::next(shift_margin_2, x.size());
+    const auto shift_margin_4 = std::next(shift_margin_3, x.size());
+
+    const auto rotate_margin_1 = std::next(rotate.begin(), x.size());
+    const auto rotate_margin_2 = std::next(rotate_margin_1, x.size());
+    const auto rotate_margin_3 = std::next(rotate_margin_2, x.size());
+    const auto rotate_margin_4 = std::next(rotate_margin_3, x.size());
+
     constexpr auto N = 5;
     std::array<double, N> fit{
-        rosenbrock_func(x, {shift.begin(), shift_end_1},
-                        {rotate.begin(), rotate_end_1}, true, rotate_flag),
-        ellips_func(x, {shift_begin_2, shift_end_2},
-                    {rotate_begin_2, rotate_end_2}, true, rotate_flag) *
+        rosenbrock_func(x, {shift.begin(), shift_margin_1},
+                        {rotate.begin(), rotate_margin_1}, true, rotate_flag),
+        ellips_func(x, {shift_margin_1, shift_margin_2},
+                    {rotate_margin_1, rotate_margin_2}, true, rotate_flag) *
             1e-6,
-        bent_cigar_func(x, {shift_begin_3, shift_end_3},
-                        {rotate_begin_3, rotate_end_3}, true, rotate_flag) *
+        bent_cigar_func(x, {shift_margin_2, shift_margin_3},
+                        {rotate_margin_2, rotate_margin_3}, true, rotate_flag) *
             1e-6,
-        discus_func(x, {shift_begin_4, shift_end_4},
-                    {rotate_begin_4, rotate_end_4}, true, rotate_flag) *
+        discus_func(x, {shift_margin_3, shift_margin_4},
+                    {rotate_margin_3, rotate_margin_4}, true, rotate_flag) *
             1e-6,
-        ellips_func(x, {shift_begin_5, shift.end()},
-                    {rotate_begin_5, rotate.end()}, true, false) *
+        ellips_func(x, {shift_margin_4, shift.end()},
+                    {rotate_margin_4, rotate.end()}, true, false) *
             1e-6, // ?? why false
     };
     const std::array<int, N> delta{10, 20, 30, 40, 50};
@@ -529,23 +523,21 @@ double cf02(std::vector<double>& x, const std::vector<double>& shift,
             const std::vector<std::vector<double>>& rotate, bool rotate_flag)
 {
     // asumming that shift.size and rotate.size is (at least) 3 * x.size
-    const auto shift_end_1 = std::next(shift.begin(), x.size());
-    const auto shift_begin_2 = std::next(shift_end_1);
-    const auto shift_end_2 = std::next(shift_begin_2, x.size());
-    const auto shift_begin_3 = std::next(shift_end_2);
-    const auto rotate_end_1 = std::next(rotate.begin(), x.size());
-    const auto rotate_begin_2 = std::next(rotate_end_1);
-    const auto rotate_end_2 = std::next(rotate_begin_2, x.size());
-    const auto rotate_begin_3 = std::next(rotate_end_2);
+    const auto shift_margin_1 = std::next(shift.begin(), x.size());
+    const auto shift_margin_2 = std::next(shift_margin_1, x.size());
+
+    const auto rotate_margin_1 = std::next(rotate.begin(), x.size());
+    const auto rotate_margin_2 = std::next(rotate_margin_1, x.size());
+
     constexpr auto N = 3;
     std::array<double, N> fit{
-        schwefel_func(x, {shift.begin(), shift_end_1},
-                      {rotate.begin(), rotate_end_1}, true,
+        schwefel_func(x, {shift.begin(), shift_margin_1},
+                      {rotate.begin(), rotate_margin_1}, true,
                       false), // ?? why false
-        rastrigin_func(x, {shift_begin_2, shift_end_2},
-                       {rotate_begin_2, rotate_end_2}, true, rotate_flag),
-        hgbat_func(x, {shift_begin_3, shift.end()},
-                   {rotate_begin_3, rotate.end()}, true, rotate_flag),
+        rastrigin_func(x, {shift_margin_1, shift_margin_2},
+                       {rotate_margin_1, rotate_margin_2}, true, rotate_flag),
+        hgbat_func(x, {shift_margin_2, shift.end()},
+                   {rotate_margin_2, rotate.end()}, true, rotate_flag),
     };
     const std::array<int, N> delta{20, 10, 10};
     const std::array<int, N> bias{0, 200, 100};
