@@ -7,7 +7,7 @@
 int main()
 {
     ga::functions::sanity_check();
-    ga::GeneticAlgorithm ga;
+    ga::GeneticAlgorithm ga = ga::getDefault();
     ga.sanityCheck();
     return 0;
 }
