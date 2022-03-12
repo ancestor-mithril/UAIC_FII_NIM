@@ -48,6 +48,7 @@ shift_rotate_transform(std::vector<double>& x, const std::vector<double>& shift,
                        const std::vector<std::vector<double>>& rotate,
                        double shift_rate, bool shift_flag, bool rotate_flag)
 {
+    // TODO: also try template bool
     if (shift_flag) [[likely]] {
         shiftfunc(x, shift);
     }
@@ -100,9 +101,45 @@ double composition_function_calculator(const std::vector<double>& x,
                                        const std::vector<double>& shift,
                                        const std::array<int, Size>& delta,
                                        const std::array<int, Size>& bias,
-                                       const std::array<double, Size>& fit)
+                                       std::array<double, Size>& fit)
 {
-    throw "Not Implemented";
+    constexpr auto INF = 1.0e99;
+    auto w_max = 0.0;
+    std::array<double, Size> w{};
+    for (std::size_t i = 0; i < Size; ++i) {
+        fit[i] += bias[i];
+        // TODO: add it before calling this function, there's no need to use 2
+        // arrays
+        for (std::size_t j = 0; j < x.size(); ++j) {
+            const auto temp = x[j] - shift[i * x.size() + j];
+            w[i] += temp * temp;
+        }
+        // This will always be true unless x.size() is 0
+        // should we check how close is w[i] to 0?
+        if (w[i] != 0.0) [[likely]] {
+            w[i] = std::sqrt(1.0 / w[i]) *
+                   std::exp(-w[i] / 2.0 / x.size() / delta[i] / delta[i]);
+        } else [[unlikely]] {
+            w[i] = INF;
+        }
+        if (w[i] > w_max) {
+            w_max = w[i];
+        }
+    }
+    
+    if (w_max == 0.0) [[unlikely]] {
+        return std::accumulate(fit.begin(), fit.end(), 0.0, [](auto f, auto elem){
+            return f + elem / Size;
+        });
+    }
+
+    const auto w_sum = std::accumulate(w.begin(), w.end(), 0.0);
+    // TODO: Replace with std algorithm
+    auto f = 0.0;
+    for (std::size_t i = 0; i < Size; ++i) {
+        f += w[i] / w_sum * fit[i];
+    }
+    return f;
 }
 
 } // namespace
@@ -467,7 +504,7 @@ double cf01(std::vector<double>& x, const std::vector<double>& shift,
     const auto rotate_end_4 = std::next(rotate_begin_4, x.size());
     const auto rotate_begin_5 = std::next(rotate_end_4);
     constexpr auto N = 5;
-    const std::array<double, N> fit{
+    std::array<double, N> fit{
         rosenbrock_func(x, {shift.begin(), shift_end_1},
                         {rotate.begin(), rotate_end_1}, true, rotate_flag),
         ellips_func(x, {shift_begin_2, shift_end_2},
@@ -501,7 +538,7 @@ double cf02(std::vector<double>& x, const std::vector<double>& shift,
     const auto rotate_end_2 = std::next(rotate_begin_2, x.size());
     const auto rotate_begin_3 = std::next(rotate_end_2);
     constexpr auto N = 3;
-    const std::array<double, N> fit{
+    std::array<double, N> fit{
         schwefel_func(x, {shift.begin(), shift_end_1},
                       {rotate.begin(), rotate_end_1}, true,
                       false), // ?? why false
