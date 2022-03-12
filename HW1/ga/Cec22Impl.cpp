@@ -1,8 +1,8 @@
 module;
+#include <iostream> // beware that if execution is before iostream this will fail
 #include <algorithm>
 #include <cmath>
 #include <functional>
-#include <iostream>
 #include <numeric>
 #include <tuple>
 #include <unordered_map>
@@ -28,6 +28,8 @@ void shiftfunc(std::vector<double>& x, const std::vector<double>& shift)
     // assuming x.size() == shift.size()
     std::transform(x.begin(), x.end(), shift.begin(), x.begin(),
                    std::minus<double>());
+    // Would it be worth to parallelize (vectorize) this for under 100 elements?
+    // TODO: Check what can be vectorized
 }
 
 std::vector<double> rotatefunc(std::vector<double>& x,
@@ -48,13 +50,13 @@ shift_rotate_transform(std::vector<double>& x, const std::vector<double>& shift,
                        const std::vector<std::vector<double>>& rotate,
                        double shift_rate, bool shift_flag, bool rotate_flag)
 {
-    // TODO: also try template bool
+    // TODO: also try template bool and measure performance
     if (shift_flag) [[likely]] {
         shiftfunc(x, shift);
     }
     std::transform(x.begin(), x.end(), x.begin(),
                    std::bind(std::multiplies<double>(), std::placeholders::_1,
-                             shift_rate));
+                             shift_rate)); // might be worth using unseq
     if (rotate_flag) [[likely]] {
         return rotatefunc(x, rotate);
     }
@@ -95,6 +97,7 @@ void shuffle(std::vector<double>& nums, const std::vector<std::size_t>& pos)
     for (std::size_t i = 0; i < pos.size(); ++i) {
         nums[i] = aux[i];
     }
+    // TODO: replace
 }
 
 template <std::size_t Size>
@@ -103,7 +106,6 @@ double composition_function_calculator(const std::vector<double>& x,
                                        const std::array<int, Size>& delta,
                                        const std::array<double, Size>& fit)
 {
-    constexpr auto INF = 1.0e99;
     auto w_max = 0.0;
     std::array<double, Size> w{};
     for (std::size_t i = 0; i < Size; ++i) {
@@ -111,32 +113,34 @@ double composition_function_calculator(const std::vector<double>& x,
             const auto temp = x[j] - shift[i * x.size() + j];
             w[i] += temp * temp;
         }
-        // This will always be true unless x.size() is 0
-        // should we check how close is w[i] to 0?
+
+        // else will happen only when x is shift
         if (w[i] != 0.0) [[likely]] {
             w[i] = std::sqrt(1.0 / w[i]) *
                    std::exp(-w[i] / 2.0 / x.size() / delta[i] / delta[i]);
         } else [[unlikely]] {
-            w[i] = INF;
+            w[i] = 1.0e99; // INF
         }
+
         if (w[i] > w_max) {
             w_max = w[i];
         }
     }
 
-    if (w_max == 0.0) [[unlikely]] {
-        return std::accumulate(
-            fit.begin(), fit.end(), 0.0,
-            [](auto f, auto elem) { return f + elem / Size; });
-    }
+    // This does not happen if Size > 0
+    // if (w_max == 0.0) [[unlikely]] {
+    //     return std::accumulate(
+    //         fit.begin(), fit.end(), 0.0,
+    //         [](auto f, auto elem) { return f + elem / Size; });
+    // }
 
-    const auto w_sum = std::accumulate(w.begin(), w.end(), 0.0);
-    // TODO: Replace with std algorithm
-    auto f = 0.0;
-    for (std::size_t i = 0; i < Size; ++i) {
-        f += w[i] / w_sum * fit[i];
-    }
-    return f;
+    // std::transform_reduce is the parallelized version of std::inner_product,
+    // however we know that w.size() is small.
+    return std::inner_product(
+        w.begin(), w.end(), fit.begin(), 0.0, std::plus<double>(),
+        [w_sum = std::accumulate(w.begin(), w.end(), 0.0)](auto w, auto fit) {
+            return w / w_sum * fit;
+        });
 }
 
 } // namespace
@@ -171,6 +175,7 @@ double bent_cigar_func(std::vector<double>& x, const std::vector<double>& shift,
                                return f + elem * elem * 1000000.0;
                            }); // 1000000.0 = std::pow(10.0, 6.0)
     // TODO: std::move(f) vs f, which is better?
+    // accumulate vs reduce
 }
 
 double discus_func(std::vector<double>& x, const std::vector<double>& shift,
@@ -193,6 +198,7 @@ double ellips_func(std::vector<double>& x, const std::vector<double>& shift,
     const auto z =
         shift_rotate_transform(x, shift, rotate, 1.0, shift_flag, rotate_flag);
     auto i = 0;
+    // here we need to accumulate because reduce does not maintain order
     return std::accumulate(
         std::next(z.begin()), z.end(), 0.0,
         [&i, n = z.size()](auto f, auto elem) {
