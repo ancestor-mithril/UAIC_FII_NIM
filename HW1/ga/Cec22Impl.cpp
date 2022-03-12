@@ -35,8 +35,8 @@ std::vector<double> rotatefunc(std::vector<double>& x,
 {
     // assuming x.size() == rotate.size() == rotate[0].size()
     std::vector<double> aux(x.size(), 0.0);
-    for (auto i = 0; i < x.size(); ++i) {
-        for (auto j = 0; j < x.size(); ++j) {
+    for (std::size_t i = 0; i < x.size(); ++i) {
+        for (std::size_t j = 0; j < x.size(); ++j) {
             aux[i] += x[j] * rotate[i][j];
         }
     }
@@ -48,13 +48,13 @@ shift_rotate_transform(std::vector<double>& x, const std::vector<double>& shift,
                        const std::vector<std::vector<double>>& rotate,
                        double shift_rate, bool shift_flag, bool rotate_flag)
 {
-    if (shift_flag) {
+    if (shift_flag) [[likely]] {
         shiftfunc(x, shift);
     }
     std::transform(x.begin(), x.end(), x.begin(),
                    std::bind(std::multiplies<double>(), std::placeholders::_1,
                              shift_rate));
-    if (rotate_flag) {
+    if (rotate_flag) [[likely]] {
         return rotatefunc(x, rotate);
     }
     return x;
@@ -86,10 +86,11 @@ void shuffle(std::vector<double>& nums, const std::vector<std::size_t>& pos)
 {
     // assuming that pos is a permutation of [0, .., nums.size() - 1]
     double aux[pos.size()];
-    for (auto i = 0; i < pos.size(); ++i) {
+    // forbidden by ISO C++, but cannot use unordered map in this context
+    for (std::size_t i = 0; i < pos.size(); ++i) {
         aux[pos[i]] = nums[i];
     }
-    for (auto i = 0; i < pos.size(); ++i) {
+    for (std::size_t i = 0; i < pos.size(); ++i) {
         nums[i] = aux[i];
     }
 }
@@ -144,12 +145,11 @@ double discus_func(std::vector<double>& x, const std::vector<double>& shift,
 {
     const auto z =
         shift_rotate_transform(x, shift, rotate, 1.0, shift_flag, rotate_flag);
-    auto f = z[0] * z[0] * 1000000.0;
     // 1000000.0 = std::pow(10.0, 6.0)
     // assuming z.size() >= 1
-    return std::accumulate(
-        std::next(z.begin()), z.end(), z[0] * z[0] * 1000000.0,
-        [](auto f, auto elem) { return f + elem * elem; });
+    return std::accumulate(std::next(z.begin()), z.end(),
+                           z[0] * z[0] * 1000000.0,
+                           [](auto f, auto elem) { return f + elem * elem; });
 }
 
 double ellips_func(std::vector<double>& x, const std::vector<double>& shift,
@@ -160,7 +160,8 @@ double ellips_func(std::vector<double>& x, const std::vector<double>& shift,
         shift_rotate_transform(x, shift, rotate, 1.0, shift_flag, rotate_flag);
     auto i = 0;
     return std::accumulate(
-        std::next(z.begin()), z.end(), 0.0, [&i, n = z.size()](auto f, auto elem) {
+        std::next(z.begin()), z.end(), 0.0,
+        [&i, n = z.size()](auto f, auto elem) {
             return std::move(f) + std::pow(10.0, 6.0 * (i++) / n) * elem * elem;
         });
 }
@@ -173,17 +174,16 @@ double escaffer6_func(std::vector<double>& x, const std::vector<double>& shift,
         shift_rotate_transform(x, shift, rotate, 1.0, shift_flag, rotate_flag);
 
     auto f = 0.0;
-    for (auto i = 0; i < z.size() - 1; ++i) {
+    // assuming z.size() is not 0
+    for (std::size_t i = 0; i < z.size() - 1; ++i) {
         const auto temp1 =
             std::sin(std::sqrt(z[i] * z[i] + z[i + 1] * z[i + 1]));
         const auto temp2 = 1.0 + 0.001 * (z[i] * z[i] + z[i + 1] * z[i + 1]);
         f += 0.5 + (temp1 * temp1 - 0.5) / (temp2 * temp2);
     }
     const auto last = *std::prev(z.end()); // vs z[z.size() - 1]
-    const auto temp1 =
-        std::sin(std::sqrt(last * last + z[0] * z[0]));
-    const auto temp2 =
-        1.0 + 0.001 * (last * last + z[0] * z[0]);
+    const auto temp1 = std::sin(std::sqrt(last * last + z[0] * z[0]));
+    const auto temp2 = 1.0 + 0.001 * (last * last + z[0] * z[0]);
     f += 0.5 + (temp1 * temp1 - 0.5) / (temp2 * temp2);
     return f;
 }
@@ -195,7 +195,7 @@ double griewank_func(std::vector<double>& x, const std::vector<double>& shift,
                                           shift_flag, rotate_flag);
     auto s = 0.0;
     auto p = 1.0;
-    for (auto i = 0; i < z.size(); ++i) {
+    for (std::size_t i = 0; i < z.size(); ++i) {
         s += z[i] * z[i];
         p *= std::cos(z[i] / std::sqrt(1.0 + i));
     }
@@ -211,7 +211,8 @@ double grie_rosen_func(std::vector<double>& x, const std::vector<double>& shift,
     auto f = 0.0;
     z[0] += 1.0; // TODO: we could use const z and resolve 1.0 difference in
                  // calculus
-    for (auto i = 0; i < z.size() - 1; ++i) {
+    // assuming z.size() is not 0
+    for (std::size_t i = 0; i < z.size() - 1; ++i) {
         z[i + 1] += 1.0;
         const auto temp1 = z[i] * z[i] - z[i + 1];
         const auto temp2 = z[i] - 1.0;
@@ -268,7 +269,8 @@ double rosenbrock_func(std::vector<double>& x, const std::vector<double>& shift,
     const auto z = shift_rotate_transform(x, shift, rotate, 2.048 / 100.0,
                                           shift_flag, rotate_flag);
     auto f = 0.0;
-    for (auto i = 0; i < z.size() - 1; ++i) {
+    // assuming z.size() is not 0
+    for (std::size_t i = 0; i < z.size() - 1; ++i) {
         // TODO: aux vs not aux
         const auto aux = z[i] + 1.0;
         const auto temp1 = aux * aux - z[i + 1] - 1.0;
@@ -329,7 +331,8 @@ schaffer_F7_func(std::vector<double>& x, const std::vector<double>& shift,
     // https://www.sciencedirect.com/topics/computer-science/benchmark-function
     // TODO: check if results are ok
     auto f = 0.0;
-    for (auto i = 0; i < z.size() - 1; ++i) {
+    // assuming z.size() is not 0
+    for (std::size_t i = 0; i < z.size() - 1; ++i) {
         const auto si = std::sqrt(z[i] * z[i] + z[i + 1] * z[i + 1]);
         const auto temp = std::sin(50.0 * std::pow(si, 0.2));
         f += si + si * temp * temp;
@@ -376,7 +379,7 @@ double zakharov_func(std::vector<double>& x, const std::vector<double>& shift,
         shift_rotate_transform(x, shift, rotate, 1.0, shift_flag, rotate_flag);
     auto sum1 = 0.0;
     auto sum2 = 0.0;
-    for (auto i = 0; i < z.size(); ++i) {
+    for (std::size_t i = 0; i < z.size(); ++i) {
         sum1 += z[i] * z[i];
         sum2 += 0.5 * i * z[i];
     }
@@ -391,7 +394,7 @@ double katsuura_func(std::vector<double>& x, const std::vector<double>& shift,
                                           shift_flag, rotate_flag);
     auto f = 1.0;
     const auto temp3 = std::pow(static_cast<double>(z.size()), 1.2);
-    for (auto i = 0; i < z.size(); ++i) {
+    for (std::size_t i = 0; i < z.size(); ++i) {
         auto temp = 0.0;
         for (auto j = 1; j < 33; ++j) {
             const auto temp1 = std::pow(2.0, j);
@@ -410,7 +413,6 @@ hf01(std::vector<double>& x, const std::vector<double>& shift,
      const std::vector<std::size_t>& indices, bool shift_flag, bool rotate_flag)
 {
     // [0.4, 0.4, 0.2]
-    constexpr auto N = 3;
     auto z =
         shift_rotate_transform(x, shift, rotate, 1.0, shift_flag, rotate_flag);
     shuffle(z, indices);
@@ -445,8 +447,7 @@ hf03(std::vector<double>& x, const std::vector<double>& shift,
 }
 
 double cf01(std::vector<double>& x, const std::vector<double>& shift,
-            const std::vector<std::vector<double>>& rotate, bool shift_flag,
-            bool rotate_flag)
+            const std::vector<std::vector<double>>& rotate, bool rotate_flag)
 {
     // asumming that shift.size and rotate.size is (at least) 5 * x.size
     const auto shift_end_1 = std::next(shift.begin(), x.size());
@@ -488,8 +489,7 @@ double cf01(std::vector<double>& x, const std::vector<double>& shift,
 }
 
 double cf02(std::vector<double>& x, const std::vector<double>& shift,
-            const std::vector<std::vector<double>>& rotate, bool shift_flag,
-            bool rotate_flag)
+            const std::vector<std::vector<double>>& rotate, bool rotate_flag)
 {
     // asumming that shift.size and rotate.size is (at least) 3 * x.size
     const auto shift_end_1 = std::next(shift.begin(), x.size());
@@ -516,16 +516,14 @@ double cf02(std::vector<double>& x, const std::vector<double>& shift,
 }
 
 double cf03(std::vector<double>& x, const std::vector<double>& shift,
-            const std::vector<std::vector<double>>& rotate, bool shift_flag,
-            bool rotate_flag)
+            const std::vector<std::vector<double>>& rotate, bool rotate_flag)
 {
     // asumming that shift.size and rotate.size is (at least) 3 * x.size
     throw "Not Implemented";
 }
 
 double cf04(std::vector<double>& x, const std::vector<double>& shift,
-            const std::vector<std::vector<double>>& rotate, bool shift_flag,
-            bool rotate_flag)
+            const std::vector<std::vector<double>>& rotate, bool rotate_flag)
 {
     // asumming that shift.size and rotate.size is (at least) 3 * x.size
     throw "Not Implemented";

@@ -128,24 +128,24 @@ export double hf03(std::vector<double>& x, const std::vector<double>& shift,
                    bool rotate_flag);
 
 // Composition Function 1
-export double cf01(std::vector<double>& x, const std::vector<double>& shift,
-                   const std::vector<std::vector<double>>& rotate,
-                   bool shift_flag, bool rotate_flag);
+export double
+cf01(std::vector<double>& x, const std::vector<double>& shift,
+     const std::vector<std::vector<double>>& rotate, bool rotate_flag);
 
 // Composition Function 1
-export double cf02(std::vector<double>& x, const std::vector<double>& shift,
-                   const std::vector<std::vector<double>>& rotate,
-                   bool shift_flag, bool rotate_flag);
+export double
+cf02(std::vector<double>& x, const std::vector<double>& shift,
+     const std::vector<std::vector<double>>& rotate, bool rotate_flag);
 
 // Composition Function 1
-export double cf03(std::vector<double>& x, const std::vector<double>& shift,
-                   const std::vector<std::vector<double>>& rotate,
-                   bool shift_flag, bool rotate_flag);
+export double
+cf03(std::vector<double>& x, const std::vector<double>& shift,
+     const std::vector<std::vector<double>>& rotate, bool rotate_flag);
 
 // Composition Function 1
-export double cf04(std::vector<double>& x, const std::vector<double>& shift,
-                   const std::vector<std::vector<double>>& rotate,
-                   bool shift_flag, bool rotate_flag);
+export double
+cf04(std::vector<double>& x, const std::vector<double>& shift,
+     const std::vector<std::vector<double>>& rotate, bool rotate_flag);
 
 export int sanity_check();
 

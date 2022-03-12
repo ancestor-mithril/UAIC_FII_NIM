@@ -1,6 +1,7 @@
 BUILDDIR=build
 APP=test
 OPT=O3
+CMAKE_CXX_FLAGS=-std=c++20 -${OPT} -fmodules-ts -Wall -Wextra -Wpedantic
 
 cxx:
 	export CXX=g++
@@ -18,17 +19,17 @@ clean:
 
 rel1: clean builddir cxx # We need clean because building std modules comes with gcm.cache errors
 	cd ${BUILDDIR} \
-	&& g++ -std=c++20 -fmodules-ts -c -xc++-system-header iostream \
-	&& g++ -std=c++20 -${OPT} -fmodules-ts -c -xc++-system-header vector \
-	&& g++ -std=c++20 -${OPT} -fmodules-ts -c -xc++-system-header algorithm \
-	&& g++ -std=c++20 -${OPT} -fmodules-ts -c -xc++-system-header functional \
-	&& g++ -std=c++20 -${OPT} -fmodules-ts -c -xc++-system-header cmath \
-	&& g++ -std=c++20 -${OPT} -fmodules-ts -c -xc++-system-header numeric \
-	&& g++ -std=c++20 -${OPT} -fmodules-ts -c -xc++-system-header unordered_map \
-	&& g++ -std=c++20 -${OPT} -fmodules-ts -c -xc++-system-header tuple \
-	&& g++ -std=c++20 -${OPT} -fmodules-ts -c ../ga/Cec22.cpp ../ga/Cec22Impl.cpp \
-	&& g++ -std=c++20 -${OPT} -fmodules-ts -c ../ga/main.cpp \
-	&& g++ -std=c++20 -${OPT} Cec22.o Cec22Impl.o main.o -o test.exe
+	&& g++ ${CMAKE_CXX_FLAGS} -c -xc++-system-header iostream \
+	&& g++ ${CMAKE_CXX_FLAGS} -c -xc++-system-header vector \
+	&& g++ ${CMAKE_CXX_FLAGS} -c -xc++-system-header algorithm \
+	&& g++ ${CMAKE_CXX_FLAGS} -c -xc++-system-header functional \
+	&& g++ ${CMAKE_CXX_FLAGS} -c -xc++-system-header cmath \
+	&& g++ ${CMAKE_CXX_FLAGS} -c -xc++-system-header numeric \
+	&& g++ ${CMAKE_CXX_FLAGS} -c -xc++-system-header unordered_map \
+	&& g++ ${CMAKE_CXX_FLAGS} -c -xc++-system-header tuple \
+	&& g++ ${CMAKE_CXX_FLAGS} -c ../ga/Cec22.cpp ../ga/Cec22Impl.cpp \
+	&& g++ ${CMAKE_CXX_FLAGS} -c ../ga/main.cpp \
+	&& g++ ${CMAKE_CXX_FLAGS} Cec22.o Cec22Impl.o main.o -o test.exe
 
 rel2: clean builddir cxx
 	cmake \
