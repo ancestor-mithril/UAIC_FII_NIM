@@ -88,6 +88,7 @@ void shuffle(std::vector<double>& nums, const std::vector<std::size_t>& pos)
     // assuming that pos is a permutation of [0, .., nums.size() - 1]
     double aux[pos.size()];
     // forbidden by ISO C++, but cannot use unordered map in this context
+    // because interal compiler error due to modules
     for (std::size_t i = 0; i < pos.size(); ++i) {
         aux[pos[i]] = nums[i];
     }
@@ -100,16 +101,12 @@ template <std::size_t Size>
 double composition_function_calculator(const std::vector<double>& x,
                                        const std::vector<double>& shift,
                                        const std::array<int, Size>& delta,
-                                       const std::array<int, Size>& bias,
-                                       std::array<double, Size>& fit)
+                                       const std::array<double, Size>& fit)
 {
     constexpr auto INF = 1.0e99;
     auto w_max = 0.0;
     std::array<double, Size> w{};
     for (std::size_t i = 0; i < Size; ++i) {
-        fit[i] += bias[i];
-        // TODO: add it before calling this function, there's no need to use 2
-        // arrays
         for (std::size_t j = 0; j < x.size(); ++j) {
             const auto temp = x[j] - shift[i * x.size() + j];
             w[i] += temp * temp;
@@ -498,25 +495,31 @@ double cf01(std::vector<double>& x, const std::vector<double>& shift,
     const auto rotate_margin_4 = std::next(rotate_margin_3, x.size());
 
     constexpr auto N = 5;
-    std::array<double, N> fit{
+    // fit is function result * lambda + bias
+    // lambda is 1, 1e-6, 1e-6, 1e-6, 1e-6
+    // bias is 0, 200, 300, 100, 400
+    const std::array<double, N> fit{
         rosenbrock_func(x, {shift.begin(), shift_margin_1},
                         {rotate.begin(), rotate_margin_1}, true, rotate_flag),
         ellips_func(x, {shift_margin_1, shift_margin_2},
                     {rotate_margin_1, rotate_margin_2}, true, rotate_flag) *
-            1e-6,
+                1e-6 +
+            200,
         bent_cigar_func(x, {shift_margin_2, shift_margin_3},
                         {rotate_margin_2, rotate_margin_3}, true, rotate_flag) *
-            1e-6,
+                1e-6 +
+            300,
         discus_func(x, {shift_margin_3, shift_margin_4},
                     {rotate_margin_3, rotate_margin_4}, true, rotate_flag) *
-            1e-6,
+                1e-6 +
+            100,
         ellips_func(x, {shift_margin_4, shift.end()},
                     {rotate_margin_4, rotate.end()}, true, false) *
-            1e-6, // ?? why false
+                1e-6 +
+            400, // ?? why false
     };
     const std::array<int, N> delta{10, 20, 30, 40, 50};
-    const std::array<int, N> bias{0, 200, 300, 100, 400};
-    return composition_function_calculator<N>(x, shift, delta, bias, fit);
+    return composition_function_calculator<N>(x, shift, delta, fit);
 }
 
 double cf02(std::vector<double>& x, const std::vector<double>& shift,
@@ -530,18 +533,22 @@ double cf02(std::vector<double>& x, const std::vector<double>& shift,
     const auto rotate_margin_2 = std::next(rotate_margin_1, x.size());
 
     constexpr auto N = 3;
-    std::array<double, N> fit{
+    // fit is function result * lambda + bias
+    // lambda is 1, 1, 1
+    // bias is 0, 200, 100
+    const std::array<double, N> fit{
         schwefel_func(x, {shift.begin(), shift_margin_1},
                       {rotate.begin(), rotate_margin_1}, true,
                       false), // ?? why false
         rastrigin_func(x, {shift_margin_1, shift_margin_2},
-                       {rotate_margin_1, rotate_margin_2}, true, rotate_flag),
+                       {rotate_margin_1, rotate_margin_2}, true, rotate_flag) +
+            200,
         hgbat_func(x, {shift_margin_2, shift.end()},
-                   {rotate_margin_2, rotate.end()}, true, rotate_flag),
+                   {rotate_margin_2, rotate.end()}, true, rotate_flag) +
+            100,
     };
     const std::array<int, N> delta{20, 10, 10};
-    const std::array<int, N> bias{0, 200, 100};
-    return composition_function_calculator<N>(x, shift, delta, bias, fit);
+    return composition_function_calculator<N>(x, shift, delta, fit);
 }
 
 double cf03(std::vector<double>& x, const std::vector<double>& shift,
