@@ -179,7 +179,7 @@ void GeneticAlgorithm::computeSelectionProbabilities(double total)
 std::vector<bool> GeneticAlgorithm::selectChromozome()
 {
     const auto random = randomDouble(gen);
-    for (std::size_t i = 0; i < populationSize; ++i) {
+    for (auto i = 0; i < populationSize; ++i) {
         if (random <= selectionProbabilities[i]) {
             return population[i];
         }
@@ -214,7 +214,7 @@ void GeneticAlgorithm::mutatePopulation()
 
 void GeneticAlgorithm::mutateChromozome(std::vector<bool>& chromozome)
 {
-    for (std::size_t i = 0; i < bitsPerChromozome; ++i) {
+    for (auto i = 0; i < bitsPerChromozome; ++i) {
         if (randomDouble(gen) < mutationProbability) {
             chromozome[i] = not chromozome[i];
         }
@@ -225,7 +225,7 @@ void GeneticAlgorithm::mutateChromozome(std::vector<bool>& chromozome)
 
 void GeneticAlgorithm::crossoverPopulation()
 {
-    for (std::size_t i = elitesNumber / 2; i < populationSize; ++i) {
+    for (auto i = elitesNumber / 2; i < populationSize; ++i) {
         if (randomDouble(gen) < crossoverProbability) {
             crossoverChromozomes(i, radomChromozome(gen));
         }
@@ -239,7 +239,7 @@ void GeneticAlgorithm::crossoverChromozomes(std::size_t i, std::size_t j)
     // Try to add crossover strategies and use them
 
     const auto slicePosition = randomSlice(gen);
-    for (std::size_t k = 0; k < slicePosition; ++k) {
+    for (auto k = 0; k < slicePosition; ++k) {
         population[i].swap(population[i][k], population[j][k]);
     }
 

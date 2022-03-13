@@ -26,7 +26,7 @@ std::string getInputDir()
     // TODO: implement recursive search
 }
 
-std::vector<double> readShift(int dimensions, int index)
+std::vector<double> readShift(std::size_t dimensions, int index)
 {
     // std format is not available yet
     const auto file =
@@ -49,7 +49,7 @@ std::vector<double> readShift(int dimensions, int index)
     return x;
 }
 
-std::vector<std::vector<double>> readRotate(int rows, int columns, int index)
+std::vector<std::vector<double>> readRotate(std::size_t rows, std::size_t columns, int index)
 {
     const auto file = getInputDir() + "M_" + std::to_string(index) + "_D" +
                       std::to_string(rows) + ".txt";
@@ -83,7 +83,7 @@ std::vector<std::vector<double>> readRotate(int rows, int columns, int index)
     return rotate;
 }
 
-std::vector<std::size_t> readShuffle(int dimensions, int index)
+std::vector<std::size_t> readShuffle(std::size_t dimensions, int index)
 {
     const auto file = getInputDir() + "shuffle_data_" + std::to_string(index) +
                       "_D" + std::to_string(dimensions) + ".txt";

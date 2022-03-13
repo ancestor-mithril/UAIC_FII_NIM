@@ -76,17 +76,14 @@ shift_rotate_transform(std::vector<double>& x, const std::vector<double>& shift,
     // shift_rate)); return x;
 }
 
-void shuffle(std::vector<double>& nums, const std::vector<std::size_t>& pos)
+void apply_permutation(std::vector<double>& nums,
+                       const std::vector<std::size_t>& indices)
 {
-    // assuming that pos is a permutation of [0, .., nums.size() - 1]
-    double aux[pos.size()];
-    for (std::size_t i = 0; i < pos.size(); ++i) {
-        aux[pos[i]] = nums[i];
-    }
-    for (std::size_t i = 0; i < pos.size(); ++i) {
-        nums[i] = aux[i];
-    }
-    // TODO: replace
+    std::vector<double> aux;
+    aux.reserve(nums.size());
+    std::transform(indices.begin(), indices.end(), std::back_inserter(aux),
+                   [&](auto i) { return std::move(nums[i]); });
+    nums = std::move(aux);
 }
 
 template <std::size_t Size>
@@ -444,7 +441,7 @@ hf01(std::vector<double>& x, const std::vector<double>& shift,
     // [0.4, 0.4, 0.2]
     auto z =
         shift_rotate_transform(x, shift, rotate, 1.0, shift_flag, rotate_flag);
-    shuffle(z, indices);
+    apply_permutation(z, indices);
 
     const auto range = std::ceil(0.4 * z.size());
     const auto margin_1 = std::next(z.begin(), range); // 0.4
