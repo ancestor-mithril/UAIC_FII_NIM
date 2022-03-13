@@ -21,7 +21,7 @@ builddir:
 clean:
 	rm -rf ${BUILDDIR}
 
-rel1: clean builddir cxx # We need clean because building std modules comes with gcm.cache errors
+rel1: builddir cxx
 	cd ${BUILDDIR} \
 	&& g++ ${CMAKE_CXX_FLAGS} -c ../ga/Cec22.cpp \
 	&& g++ ${CMAKE_CXX_FLAGS} -c ../ga/GeneticAlgorithm.cpp \
@@ -29,7 +29,7 @@ rel1: clean builddir cxx # We need clean because building std modules comes with
 	&& g++ ${CMAKE_CXX_FLAGS} -c ../ga/main.cpp \
 	&& g++ ${CMAKE_CXX_FLAGS} Cec22.o FunctionManager.o GeneticAlgorithm.o main.o -o ${APP}.exe
 
-rel2: clean builddir cxx
+rel2: builddir cxx
 	cmake \
 		-D CMAKE_BUILD_TYPE=Release \
 		-D CMAKE_CXX_COMPILER=g++ \
@@ -38,7 +38,7 @@ rel2: clean builddir cxx
 		-B ${BUILDDIR}
 	cmake --build ${BUILDDIR}
 
-debug: clean builddir cxx # We need clean because building std modules comes with gcm.cache errors
+debug: builddir cxx
 	cmake \
 		-D CMAKE_BUILD_TYPE=Debug \
 		-D CMAKE_CXX_COMPILER=g++ \

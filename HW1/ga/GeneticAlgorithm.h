@@ -29,13 +29,38 @@ class GeneticAlgorithm
     ///
     double evaluateChromozome(std::size_t index);
     double evaluateChromozomeAndUpdateBest(std::size_t index);
+    /// this has to be done sequentially
+    void evaluatePopulation();
+    /// name is misleading, does not normalize, but computes fitness values in a
+    /// single iteration and returns their sum
+    double normalizeFitness(double min, double max);
+    /// fitness normalization is done while computing selection probabilities,
+    /// dividing by the total sum
+    void computeSelectionProbabilities(double total);
+    // TODO: return by value then assign, or return by reference then assign?
+    std::vector<bool> selectChromozome();
+    /// copies in newPopulation selected chromozomes, then swaps vectors
+    void selectNewPopulation();
     bool stop() const;
+
+    /// we mutate all population except half the elites
+    void mutatePopulation();
+    /// doing chromozome mutation in a separate method comes with the overhead
+    /// of a function call
+    void mutateChromozome(std::vector<bool>& chromozome);
+
+    /// sorting is an expensive operation, our approach is to randomly select
+    /// target for crossover
+    void crossoverPopulation();
+    void crossoverChromozomes(std::size_t i, std::size_t j);
 
     // const?
     std::random_device seed;
     std::mt19937_64 gen{seed()};
     std::bernoulli_distribution randomBool;
     std::uniform_real_distribution<double> randomDouble{0.0, 1.0};
+    std::uniform_int_distribution<> radomChromozome{0, populationSize - 1};
+    std::uniform_int_distribution<> randomSlice; // initialized in ctor
 
     // TODO: find good values
     // TODO: use const where we should use const
@@ -63,11 +88,16 @@ class GeneticAlgorithm
     // TODO: test against char, might be faster because std::vector<double> is
     // space efficient but not time efficient
     std::vector<std::vector<bool>> population;
+    std::vector<std::vector<bool>> newPopulation;
     std::vector<std::vector<double>> decodings;
-    // considering population.size() == decoding.size() == population,
-    // it might be an idea to use std array
+    std::vector<double> fitnesses;
+    std::vector<double> selectionProbabilities;
+    std::vector<std::size_t> indices; // [0, ..populationSize)
+    // considering population.size() == decoding.size() == fitnesses.size() ==
+    // selectionProbabilities.size() == population, it might be an idea to use
+    // std array
 
-    /// Takes a std::vector<bool::const_iterator expects to iterate thorugh
+    /// Takes a std::vector<bool::const_iterator and expects to iterate through
     /// bitsPerVariable variables, without bound checking.
     std::function<double(const const_bool_it begin)> decodingStrategy;
     FunctionManager function;

@@ -80,8 +80,6 @@ void shuffle(std::vector<double>& nums, const std::vector<std::size_t>& pos)
 {
     // assuming that pos is a permutation of [0, .., nums.size() - 1]
     double aux[pos.size()];
-    // forbidden by ISO C++, but cannot use unordered map in this context
-    // because interal compiler error due to modules
     for (std::size_t i = 0; i < pos.size(); ++i) {
         aux[pos[i]] = nums[i];
     }
