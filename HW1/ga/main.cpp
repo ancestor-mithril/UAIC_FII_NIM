@@ -7,7 +7,7 @@
 int main()
 {
     ga::functions::sanity_check();
-    ga::GeneticAlgorithm ga = ga::getDefault();
+    ga::GeneticAlgorithm ga = ga::getDefault("zakharov_func");
     ga.sanityCheck();
     return 0;
 }

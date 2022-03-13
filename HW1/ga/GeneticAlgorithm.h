@@ -15,21 +15,21 @@ class GeneticAlgorithm
     GeneticAlgorithm(double crossoverProbability, double mutationProbability,
                      double hypermutationRate, double elitesPercentage,
                      double selectionPressure, double encodingChangeRate,
-                     int maxSteps, int populationSize, int dimensions,
+                     int populationSize, int dimensions,
                      int stepsToHypermutation, int maxNoImprovementSteps,
                      std::string&& functionName);
     void sanityCheck();
     void run();
 
   private:
-    void randomizePopulation();
+    void randomizePopulationAndInitBest();
     /// Decoding chromozome and returning reference to vector to avoid
     /// creating new vector for each call.
     std::vector<double>& decodeChromozome(std::size_t index);
     ///
     double evaluateChromozome(std::size_t index);
-
-    double evaluatePopulation();
+    double evaluateChromozomeAndUpdateBest(std::size_t index);
+    bool stop() const;
 
     // const?
     std::random_device seed;
@@ -55,9 +55,12 @@ class GeneticAlgorithm
 
     int elitesNumber = 4; // can this modify?
 
-    FunctionManager function;
+    int epoch = 0;
+    int lastImprovement = 0;
+    double bestValue;
+    std::vector<bool> bestChromozome;
 
-    // TODO: test against char, might be faster because std::vector<double> is a
+    // TODO: test against char, might be faster because std::vector<double> is
     // space efficient but not time efficient
     std::vector<std::vector<bool>> population;
     std::vector<std::vector<double>> decodings;
@@ -67,8 +70,9 @@ class GeneticAlgorithm
     /// Takes a std::vector<bool::const_iterator expects to iterate thorugh
     /// bitsPerVariable variables, without bound checking.
     std::function<double(const const_bool_it begin)> decodingStrategy;
+    FunctionManager function;
 };
 
-GeneticAlgorithm getDefault();
+GeneticAlgorithm getDefault(std::string&& functionName);
 
 } // namespace ga

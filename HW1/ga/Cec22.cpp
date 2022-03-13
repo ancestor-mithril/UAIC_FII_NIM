@@ -54,7 +54,7 @@ shift_rotate_transform(std::vector<double>& x, const std::vector<double>& shift,
     return x;
     // Kept here for historical reason
     //
-    // if (shift_flag && rotate_flag) {
+    // if (shift_flag and rotate_flag) {
     //     shiftfunc(x, shift);
     //     std::transform(x.begin(), x.end(), x.begin(),
     //     std::bind(std::multiplies<double>(), std::placeholders::_1,
