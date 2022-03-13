@@ -1,23 +1,35 @@
+#include "FunctionManager.h"
+
+#include <functional>
 #include <random>
 #include <string>
 
 namespace ga {
 
+using const_bool_it = std::vector<bool>::const_iterator;
+
 // TODO: Maybe use template for population size
 class GeneticAlgorithm
 {
   public:
-    // TODO: add a function manager to call the functions
     GeneticAlgorithm(double crossoverProbability, double mutationProbability,
                      double hypermutationRate, double elitesPercentage,
                      double selectionPressure, double encodingChangeRate,
                      int maxSteps, int populationSize, int dimensions,
-                     int stepsToHypermutation, int maxNoImprovementSteps);
-    void sanityCheck() const;
+                     int stepsToHypermutation, int maxNoImprovementSteps,
+                     std::string&& functionName);
+    void sanityCheck();
     void run();
 
   private:
     void randomizePopulation();
+    /// Decoding chromozome and returning reference to vector to avoid
+    /// creating new vector for each call.
+    std::vector<double>& decodeChromozome(std::size_t index);
+    ///
+    double evaluateChromozome(std::size_t index);
+
+    double evaluatePopulation();
 
     // const?
     std::random_device seed;
@@ -43,9 +55,18 @@ class GeneticAlgorithm
 
     int elitesNumber = 4; // can this modify?
 
+    FunctionManager function;
+
     // TODO: test against char, might be faster because std::vector<double> is a
     // space efficient but not time efficient
     std::vector<std::vector<bool>> population;
+    std::vector<std::vector<double>> decodings;
+    // considering population.size() == decoding.size() == population,
+    // it might be an idea to use std array
+
+    /// Takes a std::vector<bool::const_iterator expects to iterate thorugh
+    /// bitsPerVariable variables, without bound checking.
+    std::function<double(const const_bool_it begin)> decodingStrategy;
 };
 
 GeneticAlgorithm getDefault();

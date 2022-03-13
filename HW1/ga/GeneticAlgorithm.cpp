@@ -12,12 +12,12 @@ constexpr auto minimum = -100.0;
 constexpr auto maximum = 100.0;
 constexpr auto valuesRange = maximum - minimum;
 constexpr auto precision = 8;
-const auto bitsPerVariable = static_cast<int>(
-    std::ceil(std::log2(valuesRange * std::pow(10, precision))));
+const auto count = valuesRange * std::pow(10, precision);
+const auto bitsPerVariable = static_cast<int>(std::ceil(std::log2(count)));
 const auto discriminator = (1ll << bitsPerVariable) - 1.0;
 // maybe use another name
 
-double decodeVariable(std::vector<bool>::const_iterator begin)
+double decodeBinaryVariable(const const_bool_it begin)
 {
     // Nice, except the formatting
     return std::accumulate(begin, std::next(begin, bitsPerVariable), 0LL,
@@ -30,14 +30,16 @@ double decodeVariable(std::vector<bool>::const_iterator begin)
 
 GeneticAlgorithm getDefault()
 {
-    return {0.3, 0.005, 0.1, 0.04, 1.01, 0.1, 200'000, 100, 10, 10, 100};
+    return {0.3,     0.005, 0.1, 0.04, 1.01, 0.1,
+            200'000, 100,   10,  10,   100,  "ackley_func"};
 }
 
 GeneticAlgorithm::GeneticAlgorithm(
     double crossoverProbability, double mutationProbability,
     double hypermutationRate, double elitesPercentage, double selectionPressure,
     double encodingChangeRate, int maxSteps, int populationSize, int dimensions,
-    int stepsToHypermutation, int maxNoImprovementSteps)
+    int stepsToHypermutation, int maxNoImprovementSteps,
+    std::string&& functionName)
     // clang-format off
     : crossoverProbability{crossoverProbability}
     , mutationProbability{mutationProbability}
@@ -52,6 +54,7 @@ GeneticAlgorithm::GeneticAlgorithm(
     , stepsToHypermutation{stepsToHypermutation}
     , maxNoImprovementSteps{maxNoImprovementSteps}
     , elitesNumber{static_cast<int>(elitesPercentage * populationSize)}
+    , function{std::move(functionName)}
 // clang-format on
 {
     std::cout << "Using " << bitsPerVariable << " bits per variable\n";
@@ -59,13 +62,17 @@ GeneticAlgorithm::GeneticAlgorithm(
     std::cout << "Using " << bitsPerChromozome << " bits per chromozome\n";
     for (auto i = 0; i < populationSize; ++i) {
         population.push_back(std::vector<bool>(bitsPerChromozome, true));
+        // will be randomized at each run call
+        decodings.push_back(std::vector<double>(dimensions, 0.0));
     }
-    // will be randomized at each run call
+
+    decodingStrategy = decodeBinaryVariable;
 }
 
-void GeneticAlgorithm::sanityCheck() const
+void GeneticAlgorithm::sanityCheck()
 {
     std::cout << "GeneticAlgorithm::sanityCheck" << '\n';
+    std::cout << evaluateChromozome(0) << '\n';
 }
 
 void GeneticAlgorithm::randomizePopulation()
@@ -75,6 +82,26 @@ void GeneticAlgorithm::randomizePopulation()
             chromozome[i] = randomBool(gen);
         }
     }
+}
+
+std::vector<double>& GeneticAlgorithm::decodeChromozome(std::size_t index)
+{
+    auto it = population[index].cbegin();
+    for (auto i = 0; i < dimensions; ++i) {
+        decodings[index][i] = decodingStrategy(it);
+        it = std::next(it, bitsPerChromozome);
+    }
+    // TODO: Refactor to use std algorithm
+    return decodings[index];
+}
+
+double GeneticAlgorithm::evaluateChromozome(std::size_t index)
+{
+    return function.evaluate(decodeChromozome(index));
+}
+
+double GeneticAlgorithm::evaluatePopulation()
+{
 }
 
 void GeneticAlgorithm::run()

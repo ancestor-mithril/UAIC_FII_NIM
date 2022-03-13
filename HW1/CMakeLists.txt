@@ -43,6 +43,7 @@ set (MODULES
     ga/Cec22.cpp
     # ga/Cec22Impl.cpp
     ga/GeneticAlgorithm.cpp
+    ga/FunctionManager.cpp
     # ga/GeneticAlgorithmImpl.cpp
     )
 
