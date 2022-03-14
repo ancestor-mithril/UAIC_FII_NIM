@@ -59,8 +59,8 @@ class GeneticAlgorithm
     std::mt19937_64 gen{seed()};
     std::bernoulli_distribution randomBool;
     std::uniform_real_distribution<double> randomDouble{0.0, 1.0};
-    std::uniform_int_distribution<> radomChromozome{0, populationSize - 1};
-    std::uniform_int_distribution<> randomSlice; // initialized in ctor
+    std::uniform_int_distribution<> radomChromozome; // initialized in ctor
+    std::uniform_int_distribution<> randomSlice;     // initialized in ctor
 
     // TODO: find good values
     // TODO: use const where we should use const

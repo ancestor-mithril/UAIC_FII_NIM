@@ -85,6 +85,7 @@ GeneticAlgorithm::GeneticAlgorithm(
     std::iota(indices.begin(), indices.end(), 0);
 
     decodingStrategy = decodeBinaryVariable;
+    radomChromozome = std::uniform_int_distribution<>{0, populationSize - 1};
     randomSlice = std::uniform_int_distribution<>{0, bitsPerChromozome - 1};
 }
 
@@ -276,9 +277,15 @@ void GeneticAlgorithm::run()
 {
     randomizePopulationAndInitBest();
     for (epoch = 0; epoch < maxSteps / populationSize; ++epoch) {
+        std::cout << "Epoch: " << epoch << "\tBest: " << bestValue << '\n';
         if (stop()) {
             break;
         }
+
+        mutatePopulation();
+        crossoverPopulation();
+        evaluatePopulation();
+        selectNewPopulation();
     }
 }
 
