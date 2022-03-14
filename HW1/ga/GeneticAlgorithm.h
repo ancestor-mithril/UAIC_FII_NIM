@@ -7,6 +7,7 @@
 namespace ga {
 
 using const_bool_it = std::vector<bool>::const_iterator;
+using chromozome = std::vector<bool>;
 
 // TODO: Maybe use template for population size
 class GeneticAlgorithm
@@ -28,8 +29,8 @@ class GeneticAlgorithm
     /// Decoding chromozome and returning reference to vector to avoid
     /// creating new vector for each call.
     std::vector<double>& decodeChromozome(std::size_t index);
-    /// Decoding version for any chromozome
-    std::vector<double> decodeChromozome(const std::vector<bool>& chromozome) const;
+    /// Decoding version for chromozome by reprezentation
+    std::vector<double> decodeChromozome(const chromozome& chromozome) const;
 
     ///
     double evaluateChromozome(std::size_t index);
@@ -43,7 +44,7 @@ class GeneticAlgorithm
     /// dividing by the total sum
     void computeSelectionProbabilities(double total);
     // TODO: return by value then assign, or return by reference then assign?
-    std::vector<bool> selectChromozome();
+    chromozome selectChromozome();
     /// copies in newPopulation selected chromozomes, then swaps vectors
     void selectNewPopulation();
     bool stop() const;
@@ -52,12 +53,17 @@ class GeneticAlgorithm
     void mutatePopulation();
     /// doing chromozome mutation in a separate method comes with the overhead
     /// of a function call
-    void mutateChromozome(std::vector<bool>& chromozome);
+    void mutateChromozome(chromozome& chromozome);
 
     /// sorting is an expensive operation, our approach is to randomly select
     /// target for crossover
     void crossoverPopulation();
     void crossoverChromozomes(std::size_t i, std::size_t j);
+
+    /// applies one iteration of hillclimbing to all population
+    void hillclimbPopulation(); // TODO: test std::threads vs execution::unseq
+    void hillclimbChromozome(std::size_t index);
+    void hillclimbChromozome(chromozome& chromozome);
 
     // const?
     std::random_device seed;
@@ -88,12 +94,12 @@ class GeneticAlgorithm
     int epoch = 0;
     int lastImprovement = 0;
     double bestValue;
-    std::vector<bool> bestChromozome;
+    chromozome bestChromozome;
 
     // TODO: test against char, might be faster because std::vector<double> is
     // space efficient but not time efficient
-    std::vector<std::vector<bool>> population;
-    std::vector<std::vector<bool>> newPopulation;
+    std::vector<chromozome> population;
+    std::vector<chromozome> newPopulation;
     std::vector<std::vector<double>> decodings;
     std::vector<double> fitnesses;
     std::vector<double> selectionProbabilities;

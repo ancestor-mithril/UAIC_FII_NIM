@@ -7,7 +7,7 @@
 int main()
 {
     ga::functions::sanity_check();
-    auto ga = ga::getDefault("zakharov_func");
+    auto ga = ga::getDefault("rastrigin_func");
     ga.sanityCheck();
     ga.run();
     return 0;

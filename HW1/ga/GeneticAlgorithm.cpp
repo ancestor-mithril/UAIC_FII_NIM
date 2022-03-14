@@ -1,10 +1,12 @@
 #include "GeneticAlgorithm.h"
 
 #include <cmath>
+#include <execution>
 #include <iostream>
 #include <ranges>
 
 namespace ranges = std::ranges;
+namespace exec = std::execution;
 
 namespace ga {
 
@@ -34,15 +36,15 @@ double decodeBinaryVariable(const const_bool_it begin)
 GeneticAlgorithm getDefault(std::string&& functionName)
 {
     return {0.7,   // crossoverProbability
-            0.045, // mutationProbability
-            0.15,  // hypermutationRate
+            0.001, // mutationProbability
+            0.01,  // hypermutationRate
             0.04,  // elitesPercentage
-            1.01,  // selectionPressure
+            10,  // selectionPressure
             0.1,   // encodingChangeRate
             100,   // populationSize
             10,    // dimensions
             10,    // stepsToHypermutation
-            100,   // maxNoImprovementSteps
+            1000,   // maxNoImprovementSteps
             std::move(functionName),
             false,  // applyShift
             false}; // applyRotation
@@ -75,8 +77,8 @@ GeneticAlgorithm::GeneticAlgorithm(
     std::cout << "Using " << discriminator << " discriminator\n";
     std::cout << "Using " << bitsPerChromozome << " bits per chromozome\n";
     for (auto i = 0; i < populationSize; ++i) {
-        population.push_back(std::vector<bool>(bitsPerChromozome, true));
-        newPopulation.push_back(std::vector<bool>(bitsPerChromozome, true));
+        population.push_back(chromozome(bitsPerChromozome, true));
+        newPopulation.push_back(chromozome(bitsPerChromozome, true));
         // will be randomized at each run call
         decodings.push_back(std::vector<double>(dimensions, 0.0));
     }
@@ -119,7 +121,8 @@ std::vector<double>& GeneticAlgorithm::decodeChromozome(std::size_t index)
     return decodings[index];
 }
 
-std::vector<double> GeneticAlgorithm::decodeChromozome(const std::vector<bool>& chromozome) const
+std::vector<double>
+GeneticAlgorithm::decodeChromozome(const chromozome& chromozome) const
 {
     std::vector<double> x;
     x.reserve(dimensions);
@@ -191,7 +194,7 @@ void GeneticAlgorithm::computeSelectionProbabilities(double total)
                    });
 }
 
-std::vector<bool> GeneticAlgorithm::selectChromozome()
+chromozome GeneticAlgorithm::selectChromozome()
 {
     const auto random = randomDouble(gen);
     for (auto i = 0; i < populationSize; ++i) {
@@ -245,7 +248,7 @@ void GeneticAlgorithm::mutatePopulation()
     // any benefit for such a small population. Might do in the long run.
 }
 
-void GeneticAlgorithm::mutateChromozome(std::vector<bool>& chromozome)
+void GeneticAlgorithm::mutateChromozome(chromozome& chromozome)
 {
     for (auto i = 0; i < bitsPerChromozome; ++i) {
         if (randomDouble(gen) < mutationProbability) {
@@ -253,7 +256,7 @@ void GeneticAlgorithm::mutateChromozome(std::vector<bool>& chromozome)
         }
     }
     // Not using std algorithm to iterate over bool container because it's not a
-    // container. Might do so fo char.
+    // container. Might do so for char.
 }
 
 void GeneticAlgorithm::crossoverPopulation()
@@ -285,6 +288,24 @@ void GeneticAlgorithm::crossoverChromozomes(std::size_t i, std::size_t j)
     //
     // this can and might be worth vectorizing for char, because char has
     // LegacyContiguousIterator and each chromozome has 350 bits
+}
+
+void GeneticAlgorithm::hillclimbPopulation()
+{
+    std::for_each(
+        exec::unseq, population.begin(), population.end(),
+        [this](auto& chromozome) { hillclimbChromozome(chromozome); });
+}
+
+void GeneticAlgorithm::hillclimbChromozome(std::size_t index)
+{
+    // if not used, remove
+    hillclimbChromozome(population[index]);
+}
+
+void GeneticAlgorithm::hillclimbChromozome(chromozome& chromozome)
+{
+    // TODO: Implement
 }
 
 void GeneticAlgorithm::printBest() const
