@@ -190,8 +190,25 @@ std::vector<bool> GeneticAlgorithm::selectChromozome()
 
 void GeneticAlgorithm::selectNewPopulation()
 {
+    if (elitesNumber > 0) {
+        // using indices for sorting
+        std::nth_element(
+            indices.begin(), std::next(indices.begin(), elitesNumber),
+            indices.end(), [this](auto i, auto j) {
+                return selectionProbabilities[i] > selectionProbabilities[j];
+            });
+
+        // moving best elitesNumber chromozomes to elites
+        std::transform(
+            indices.begin(), std::next(indices.begin(), elitesNumber),
+            newPopulation.begin(), [this](auto i) { return population[i]; });
+
+        // reseting indices
+        std::iota(indices.begin(), indices.end(), 0);
+    }
     std::transform(
-        newPopulation.begin(), newPopulation.end(), newPopulation.begin(),
+        std::next(population.begin(), elitesNumber), population.end(),
+        newPopulation.begin(),
         [this]([[maybe_unused]] auto& elem) { return selectChromozome(); });
     population.swap(newPopulation);
 }
@@ -220,16 +237,17 @@ void GeneticAlgorithm::mutateChromozome(std::vector<bool>& chromozome)
         }
     }
     // Not using std algorithm to iterate over bool container because it's not a
-    // container.
+    // container. Might do so fo char.
 }
 
 void GeneticAlgorithm::crossoverPopulation()
 {
-    for (auto i = elitesNumber / 2; i < populationSize; ++i) {
+    std::for_each(indices.begin(), indices.end(), [this](auto i) {
         if (randomDouble(gen) < crossoverProbability) {
             crossoverChromozomes(i, radomChromozome(gen));
         }
-    }
+    });
+    // should not be parallelized because it has side effects
 }
 
 void GeneticAlgorithm::crossoverChromozomes(std::size_t i, std::size_t j)

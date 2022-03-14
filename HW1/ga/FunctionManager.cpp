@@ -49,7 +49,8 @@ std::vector<double> readShift(std::size_t dimensions, int index)
     return x;
 }
 
-std::vector<std::vector<double>> readRotate(std::size_t rows, std::size_t columns, int index)
+std::vector<std::vector<double>>
+readRotate(std::size_t rows, std::size_t columns, int index)
 {
     const auto file = getInputDir() + "M_" + std::to_string(index) + "_D" +
                       std::to_string(rows) + ".txt";
