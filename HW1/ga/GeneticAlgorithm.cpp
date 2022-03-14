@@ -206,9 +206,10 @@ void GeneticAlgorithm::selectNewPopulation()
         // reseting indices
         std::iota(indices.begin(), indices.end(), 0);
     }
+    // skipping elites number for both iterators
     std::transform(
         std::next(population.begin(), elitesNumber), population.end(),
-        newPopulation.begin(),
+        std::next(newPopulation.begin(), elitesNumber),
         [this]([[maybe_unused]] auto& elem) { return selectChromozome(); });
     population.swap(newPopulation);
 }
