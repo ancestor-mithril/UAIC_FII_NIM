@@ -33,17 +33,19 @@ double decodeBinaryVariable(const const_bool_it begin)
 
 GeneticAlgorithm getDefault(std::string&& functionName)
 {
-    return {0.3,
-            0.005,
-            0.1,
-            0.04,
-            1.01,
-            0.1,
-            100,
-            10,
-            10,
-            100,
-            std::move(functionName)};
+    return {0.7,   // crossoverProbability
+            0.045, // mutationProbability
+            0.15,  // hypermutationRate
+            0.04,  // elitesPercentage
+            1.01,  // selectionPressure
+            0.1,   // encodingChangeRate
+            100,   // populationSize
+            10,    // dimensions
+            10,    // stepsToHypermutation
+            100,   // maxNoImprovementSteps
+            std::move(functionName),
+            false,  // applyShift
+            false}; // applyRotation
 }
 
 GeneticAlgorithm::GeneticAlgorithm(
@@ -51,7 +53,7 @@ GeneticAlgorithm::GeneticAlgorithm(
     double hypermutationRate, double elitesPercentage, double selectionPressure,
     double encodingChangeRate, int populationSize, int dimensions,
     int stepsToHypermutation, int maxNoImprovementSteps,
-    std::string&& functionName)
+    std::string&& functionName, bool applyShift, bool applyRotation)
     // clang-format off
     : crossoverProbability{crossoverProbability}
     , mutationProbability{mutationProbability}
@@ -66,7 +68,7 @@ GeneticAlgorithm::GeneticAlgorithm(
     , stepsToHypermutation{stepsToHypermutation}
     , maxNoImprovementSteps{maxNoImprovementSteps}
     , elitesNumber{static_cast<int>(elitesPercentage * populationSize)}
-    , function{std::move(functionName), dimensions}
+    , function{std::move(functionName), dimensions, applyShift, applyRotation}
 // clang-format on
 {
     std::cout << "Using " << bitsPerVariable << " bits per variable\n";
@@ -115,6 +117,18 @@ std::vector<double>& GeneticAlgorithm::decodeChromozome(std::size_t index)
     }
     // TODO: Refactor to use std algorithm
     return decodings[index];
+}
+
+std::vector<double> GeneticAlgorithm::decodeChromozome(const std::vector<bool>& chromozome) const
+{
+    std::vector<double> x;
+    x.reserve(dimensions);
+    auto it = chromozome.cbegin();
+    for (auto i = 0; i < dimensions; ++i) {
+        x.push_back(decodingStrategy(it));
+        it = std::next(it, bitsPerChromozome);
+    }
+    return x;
 }
 
 double GeneticAlgorithm::evaluateChromozome(std::size_t index)
@@ -273,6 +287,16 @@ void GeneticAlgorithm::crossoverChromozomes(std::size_t i, std::size_t j)
     // LegacyContiguousIterator and each chromozome has 350 bits
 }
 
+void GeneticAlgorithm::printBest() const
+{
+    const auto bestDecoded = decodeChromozome(bestChromozome);
+    std::cout << "Best: " << bestValue << '\n';
+    for (const auto x : bestDecoded) {
+        std::cout << x << ' ';
+    }
+    std::cout << '\n';
+}
+
 void GeneticAlgorithm::run()
 {
     randomizePopulationAndInitBest();
@@ -287,6 +311,7 @@ void GeneticAlgorithm::run()
         evaluatePopulation();
         selectNewPopulation();
     }
+    printBest();
 }
 
 } // namespace ga

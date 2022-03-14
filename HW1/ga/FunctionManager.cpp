@@ -26,8 +26,12 @@ std::string getInputDir()
     // TODO: implement recursive search
 }
 
-std::vector<double> readShift(std::size_t dimensions, int index)
+std::vector<double> readShift(std::size_t dimensions, int index, bool shiftFlag)
 {
+    if (not shiftFlag) {
+        return {};
+    }
+
     // std format is not available yet
     const auto file =
         getInputDir() + "shift_data_" + std::to_string(index) + ".txt";
@@ -50,8 +54,12 @@ std::vector<double> readShift(std::size_t dimensions, int index)
 }
 
 std::vector<std::vector<double>>
-readRotate(std::size_t rows, std::size_t columns, int index)
+readRotate(std::size_t rows, std::size_t columns, int index, bool rotateFlag)
 {
+    if (not rotateFlag) {
+        return {{}};
+    }
+
     const auto file = getInputDir() + "M_" + std::to_string(index) + "_D" +
                       std::to_string(rows) + ".txt";
     if (not fs::exists(file)) {
@@ -123,14 +131,15 @@ std::vector<std::size_t> readShuffle(std::size_t dimensions, int index)
 
 } // namespace
 
-FunctionManager::FunctionManager(std::string&& functionName, int dimensions)
+FunctionManager::FunctionManager(std::string&& functionName, int dimensions,
+                                 bool shiftFlag, bool rotateFlag)
     : functionName{std::move(functionName)}
 {
     if (dimensions != 10 and dimensions != 20) {
         throw std::runtime_error{
             "This Function Manager accepts only 10 or 20 dimensions"};
     }
-    function = initFunction(dimensions);
+    function = initFunction(dimensions, shiftFlag, rotateFlag);
 }
 
 double FunctionManager::operator()(std::vector<double>& x) const
@@ -139,7 +148,7 @@ double FunctionManager::operator()(std::vector<double>& x) const
 }
 
 std::function<double(std::vector<double>&)>
-FunctionManager::initFunction(int dimensions)
+FunctionManager::initFunction(int dimensions, bool shiftFlag, bool rotateFlag)
 {
     using namespace std::string_literals;
     using namespace ga::functions;
@@ -186,29 +195,32 @@ FunctionManager::initFunction(int dimensions)
 
     if (basicFunctions.find(functionName) != basicFunctions.end()) {
         const auto [index, f, fStar] = basicFunctions.at(functionName);
-        return [f = std::move(f), shift = readShift(dimensions, index),
-                rotate = readRotate(dimensions, dimensions, index),
-                fStar](std::vector<double>& x) {
-            return f(x, shift, rotate, true, true) + fStar;
+        return [=, f = std::move(f),
+                shift = readShift(dimensions, index, shiftFlag),
+                rotate = readRotate(dimensions, dimensions, index, rotateFlag)](
+                   std::vector<double>& x) {
+            return f(x, shift, rotate, shiftFlag, rotateFlag) + fStar;
         };
     }
 
     if (hybridFunctions.find(functionName) != hybridFunctions.end()) {
         const auto [index, f, fStar] = hybridFunctions.at(functionName);
-        return [f = std::move(f), shift = readShift(dimensions, index),
-                rotate = readRotate(dimensions, dimensions, index),
-                indices = readShuffle(dimensions, index),
-                fStar](std::vector<double>& x) {
-            return f(x, shift, rotate, indices, true, true) + fStar;
+        return [=, f = std::move(f),
+                shift = readShift(dimensions, index, shiftFlag),
+                rotate = readRotate(dimensions, dimensions, index, rotateFlag),
+                indices =
+                    readShuffle(dimensions, index)](std::vector<double>& x) {
+            return f(x, shift, rotate, indices, shiftFlag, rotateFlag) + fStar;
         };
     }
 
     if (compositionFunctions.find(functionName) != compositionFunctions.end()) {
         const auto [index, f, fStar, n] = compositionFunctions.at(functionName);
-        return [f = std::move(f), shift = readShift(dimensions * n, index),
-                rotate = readRotate(dimensions, dimensions * n, index),
-                fStar](std::vector<double>& x) {
-            return f(x, shift, rotate, true) + fStar;
+        return [=, f = std::move(f),
+                shift = readShift(dimensions * n, index, true),
+                rotate = readRotate(dimensions, dimensions * n, index, true)](
+                   std::vector<double>& x) {
+            return f(x, shift, rotate, true) + fStar; // always rotate
         };
     }
 

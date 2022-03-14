@@ -47,11 +47,12 @@ debug: builddir cxx
 		-B ${BUILDDIR}
 	cmake --build ${BUILDDIR}
 
-r1: rel1
+run:
 	./${BUILDDIR}/${APP}.exe 
 
-r2: rel2
-	./${BUILDDIR}/${APP}.exe 
+r1: rel1 run
+
+r2: rel2 run
 
 gdb: debug
 	gdb ./${BUILDDIR}/${APP}.exe

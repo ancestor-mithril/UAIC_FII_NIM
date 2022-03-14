@@ -17,15 +17,20 @@ class GeneticAlgorithm
                      double selectionPressure, double encodingChangeRate,
                      int populationSize, int dimensions,
                      int stepsToHypermutation, int maxNoImprovementSteps,
-                     std::string&& functionName);
+                     std::string&& functionName, bool applyShift,
+                     bool applyRotation);
     void sanityCheck();
     void run();
+    void printBest() const; // TODO: also add stream to print to
 
   private:
     void randomizePopulationAndInitBest();
     /// Decoding chromozome and returning reference to vector to avoid
     /// creating new vector for each call.
     std::vector<double>& decodeChromozome(std::size_t index);
+    /// Decoding version for any chromozome
+    std::vector<double> decodeChromozome(const std::vector<bool>& chromozome) const;
+
     ///
     double evaluateChromozome(std::size_t index);
     double evaluateChromozomeAndUpdateBest(std::size_t index);
