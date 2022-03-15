@@ -39,12 +39,12 @@ GeneticAlgorithm getDefault(std::string&& functionName)
             0.001, // mutationProbability
             0.01,  // hypermutationRate
             0.04,  // elitesPercentage
-            10,  // selectionPressure
+            10,    // selectionPressure
             0.1,   // encodingChangeRate
             100,   // populationSize
             10,    // dimensions
             10,    // stepsToHypermutation
-            1000,   // maxNoImprovementSteps
+            1000,  // maxNoImprovementSteps
             std::move(functionName),
             false,  // applyShift
             false}; // applyRotation
@@ -209,7 +209,7 @@ chromozome GeneticAlgorithm::selectChromozome()
 void GeneticAlgorithm::selectNewPopulation()
 {
     if (elitesNumber > 0) {
-        // using indices for sorting
+        // using indices for partial sorting
         std::nth_element(
             indices.begin(), std::next(indices.begin(), elitesNumber),
             indices.end(), [this](auto i, auto j) {

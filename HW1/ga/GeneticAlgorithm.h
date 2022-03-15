@@ -1,3 +1,4 @@
+#pragma once
 #include "FunctionManager.h"
 
 #include <functional>

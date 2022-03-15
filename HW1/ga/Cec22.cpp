@@ -313,9 +313,10 @@ double rastrigin_func(std::vector<double>& x, const std::vector<double>& shift,
 {
     const auto z = shift_rotate_transform(x, shift, rotate, 5.12 / 100.0,
                                           shift_flag, rotate_flag);
-    return std::accumulate(z.begin(), z.end(), 0.0, [=](auto f, auto elem) {
-        return f + elem * elem - 10.0 * std::cos(2.0 * PI * elem) + 10;
-    });
+    return std::accumulate(
+        z.begin(), z.end(), 10.0 * z.size(), [=](auto f, auto elem) {
+            return f + elem * elem - 10.0 * std::cos(2.0 * PI * elem);
+        });
 }
 
 double schwefel_func(std::vector<double>& x, const std::vector<double>& shift,
