@@ -7,7 +7,7 @@
 
 namespace ga {
 
-using const_bool_it = std::vector<bool>::const_iterator;
+using chromozome_cit = std::vector<bool>::const_iterator;
 using chromozome = std::vector<bool>;
 
 // TODO: Maybe use template for population size
@@ -111,7 +111,7 @@ class GeneticAlgorithm
 
     /// Takes a std::vector<bool::const_iterator and expects to iterate through
     /// bitsPerVariable variables, without bound checking.
-    std::function<double(const const_bool_it begin)> decodingStrategy;
+    std::function<double(const chromozome_cit begin)> decodingStrategy;
     FunctionManager function;
 };
 

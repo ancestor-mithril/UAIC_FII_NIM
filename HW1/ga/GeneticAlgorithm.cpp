@@ -1,4 +1,5 @@
 #include "GeneticAlgorithm.h"
+#include "Constants.h"
 
 #include <cmath>
 #include <execution>
@@ -7,28 +8,19 @@
 
 namespace ranges = std::ranges;
 namespace exec = std::execution;
+namespace cst = ga::constants;
 
 namespace ga {
 
 namespace {
 
-// Problem specific
-constexpr auto minimum = -100.0;
-constexpr auto maximum = 100.0;
-constexpr auto valuesRange = maximum - minimum;
-constexpr auto precision = 8;
-const auto count = valuesRange * std::pow(10, precision);
-const auto bitsPerVariable = static_cast<int>(std::ceil(std::log2(count)));
-const auto discriminator = (1ll << bitsPerVariable) - 1.0;
-// maybe use another name
-
-double decodeBinaryVariable(const const_bool_it begin)
+double decodeBinaryVariable(const chromozome_cit begin)
 {
     // Nice, except the formatting
-    return std::accumulate(begin, std::next(begin, bitsPerVariable), 0LL,
+    return std::accumulate(begin, std::next(begin, cst::bitsPerVariable), 0LL,
                            [](auto f, auto elem) { return f * 2 + elem; }) /
-               (discriminator) * (maximum - minimum) +
-           minimum;
+               (cst::discriminator) * (cst::maximum - cst::minimum) +
+           cst::minimum;
 }
 
 } // namespace
@@ -42,9 +34,10 @@ GeneticAlgorithm getDefault(std::string&& functionName)
             10,    // selectionPressure
             0.1,   // encodingChangeRate
             100,   // populationSize
-            10,    // dimensions
-            10,    // stepsToHypermutation
-            1000,  // maxNoImprovementSteps
+            20,    // dimensions
+            // TODO: seems to fail with dimensions = 100, check why
+            10,   // stepsToHypermutation
+            1000, // maxNoImprovementSteps
             std::move(functionName),
             false,  // applyShift
             false}; // applyRotation
@@ -66,15 +59,15 @@ GeneticAlgorithm::GeneticAlgorithm(
     , maxSteps{dimensions == 10 ? 200'000 : 1'000'000}
     , populationSize{populationSize}
     , dimensions{dimensions}
-    , bitsPerChromozome{dimensions * bitsPerVariable}
+    , bitsPerChromozome{dimensions * cst::bitsPerVariable}
     , stepsToHypermutation{stepsToHypermutation}
     , maxNoImprovementSteps{maxNoImprovementSteps}
     , elitesNumber{static_cast<int>(elitesPercentage * populationSize)}
     , function{std::move(functionName), dimensions, applyShift, applyRotation}
 // clang-format on
 {
-    std::cout << "Using " << bitsPerVariable << " bits per variable\n";
-    std::cout << "Using " << discriminator << " discriminator\n";
+    std::cout << "Using " << cst::bitsPerVariable << " bits per variable\n";
+    std::cout << "Using " << cst::discriminator << " discriminator\n";
     std::cout << "Using " << bitsPerChromozome << " bits per chromozome\n";
     for (auto i = 0; i < populationSize; ++i) {
         population.push_back(chromozome(bitsPerChromozome, true));

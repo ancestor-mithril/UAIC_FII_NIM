@@ -135,9 +135,13 @@ FunctionManager::FunctionManager(std::string&& functionName, int dimensions,
                                  bool shiftFlag, bool rotateFlag)
     : functionName{std::move(functionName)}
 {
-    if (dimensions != 10 and dimensions != 20) {
-        throw std::runtime_error{
-            "This Function Manager accepts only 10 or 20 dimensions"};
+
+    if ((shiftFlag or rotateFlag) and dimensions != 10 and dimensions != 20) {
+        // not very flexible...
+        // an idea is to create class outside and move it into a lambda, so that
+        // we could have different version of function managers ??
+        throw std::runtime_error{"This Function Manager accepts only 10 or 20 "
+                                 "dimensions when shifting or rotating"};
     }
     function = initFunction(dimensions, shiftFlag, rotateFlag);
 }
