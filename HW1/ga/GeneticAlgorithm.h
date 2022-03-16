@@ -17,6 +17,13 @@ enum class CrossoverType
     Sorted,
 };
 
+enum class HillclimbingType
+{
+    BestImprovement,
+    FirstImprovement,
+    // TODO: add the others
+};
+
 // TODO: Maybe use template for population size
 class GeneticAlgorithm
 {
@@ -24,7 +31,8 @@ class GeneticAlgorithm
     GeneticAlgorithm(double crossoverProbability, double mutationProbability,
                      double hypermutationRate, double elitesPercentage,
                      double selectionPressure, double encodingChangeRate,
-                     CrossoverType crossoverType, int populationSize,
+                     CrossoverType crossoverType,
+                     HillclimbingType hillclimbingType, int populationSize,
                      int dimensions, int stepsToHypermutation,
                      int maxNoImprovementSteps, std::string&& functionName,
                      bool applyShift, bool applyRotation);
@@ -40,9 +48,12 @@ class GeneticAlgorithm
     /// Decoding version for chromozome by reprezentation
     std::vector<double> decodeChromozome(const chromozome& chromozome) const;
 
-    ///
+    /// evaluating population members
     double evaluateChromozome(std::size_t index);
     double evaluateChromozomeAndUpdateBest(std::size_t index);
+    /// evaluating chromozomes outside of population
+    double evaluateChromozome(const chromozome& chromozome) const;
+
     /// this has to be done sequentially
     void evaluatePopulation();
     /// name is misleading, does not normalize, but computes fitness values in a
@@ -78,14 +89,18 @@ class GeneticAlgorithm
     void hillclimbPopulation(); // TODO: test std::threads vs execution::unseq
     void hillclimbChromozome(std::size_t index);
     void hillclimbChromozome(chromozome& chromozome);
+    void applyHillclimbing(chromozome& chromozome) const;
+    /// this version of first improvement hillclimbing doesn't do any sorting on
+    /// indices
+    bool firstImprovementHillclimbing(chromozome& chromozome) const;
 
     /// ctor stuff
     void initContainers();
-    void initStrategies(CrossoverType crossoverType);
+    void initStrategies(CrossoverType crossoverType,
+                        HillclimbingType hillclimbingType);
     void initDistributions(
         int populationSize); // we will not need this if template Size
 
-    // const?
     std::random_device seed;
     std::mt19937_64 gen{seed()};
     std::bernoulli_distribution randomBool;
@@ -95,21 +110,20 @@ class GeneticAlgorithm
 
     // TODO: find good values
     // TODO: use const where we should use const
-    double crossoverProbability = 0.3;  // can this modify?
-    double mutationProbability = 0.005; // can this modify?
-    double hypermutationRate = 0.1;     // can this modify?
-    double elitesPercentage = 0.04;     // can this modify?
-    double selectionPressure = 1.01;    // can this modify?
-    double encodingChangeRate = 0.1;    // can this modify?
+    double crossoverProbability;
+    double mutationProbability;
+    const double hypermutationRate;
+    const double elitesPercentage;
+    const double selectionPressure;
+    double encodingChangeRate;
 
-    const int maxSteps = 200'000;
-    const int populationSize = 100; // should we always use 100?
-    const int dimensions = 10;
-    const int bitsPerChromozome;
-    const int stepsToHypermutation = 10;
-    const int maxNoImprovementSteps = 100;
-
-    int elitesNumber = 4; // can this modify?
+    const int maxSteps;
+    const int populationSize;    // TODO: make template Size
+    const int dimensions;        // TODO: use constexpr
+    const int bitsPerChromozome; // TODO: make template bitsPerChromozome
+    const int stepsToHypermutation;
+    const int maxNoImprovementSteps;
+    const int elitesNumber;
 
     int epoch = 0;
     int lastImprovement = 0;
@@ -132,6 +146,7 @@ class GeneticAlgorithm
     /// bitsPerVariable variables, without bound checking.
     std::function<double(const chromozome_cit begin)> decodingStrategy;
     std::function<void()> crossoverPopulationStrategy;
+    std::function<bool(chromozome& chromozome)> hillclimbingStrategy;
     FunctionManager function;
 };
 

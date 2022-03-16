@@ -34,13 +34,14 @@ GeneticAlgorithm getDefault(std::string&& functionName)
             0.04,  // elitesPercentage
             10,    // selectionPressure
             // TODO: Try a lower selection pressure
-            0.1,                    // encodingChangeRate
-            CrossoverType::Chaotic, // crossoverType
-            100,                    // populationSize
-            20,                     // dimensions
+            0.1,                                // encodingChangeRate
+            CrossoverType::Chaotic,             // crossoverType
+            HillclimbingType::FirstImprovement, // hillclimbingType
+            100,                                // populationSize
+            20,                                 // dimensions
             // TODO: seems to fail with dimensions = 100, check why
-            10,   // stepsToHypermutation
-            1000, // maxNoImprovementSteps
+            10,  // stepsToHypermutation
+            100, // maxNoImprovementSteps
             std::move(functionName),
             false,  // applyShift
             false}; // applyRotation
@@ -49,8 +50,9 @@ GeneticAlgorithm getDefault(std::string&& functionName)
 GeneticAlgorithm::GeneticAlgorithm(
     double crossoverProbability, double mutationProbability,
     double hypermutationRate, double elitesPercentage, double selectionPressure,
-    double encodingChangeRate, CrossoverType crossoverType, int populationSize,
-    int dimensions, int stepsToHypermutation, int maxNoImprovementSteps,
+    double encodingChangeRate, CrossoverType crossoverType,
+    HillclimbingType hillclimbingType, int populationSize, int dimensions,
+    int stepsToHypermutation, int maxNoImprovementSteps,
     std::string&& functionName, bool applyShift, bool applyRotation)
     // clang-format off
     : crossoverProbability{crossoverProbability}
@@ -74,7 +76,7 @@ GeneticAlgorithm::GeneticAlgorithm(
     std::cout << "Using " << bitsPerChromozome << " bits per chromozome\n";
 
     initContainers();
-    initStrategies(crossoverType);
+    initStrategies(crossoverType, hillclimbingType);
     initDistributions(populationSize);
 }
 
@@ -117,6 +119,12 @@ GeneticAlgorithm::decodeChromozome(const chromozome& chromozome) const
         it = std::next(it, bitsPerChromozome);
     }
     return x;
+}
+
+double GeneticAlgorithm::evaluateChromozome(const chromozome& chromozome) const
+{
+    auto decoded = decodeChromozome(chromozome);
+    return function(decoded);
 }
 
 double GeneticAlgorithm::evaluateChromozome(std::size_t index)
@@ -287,6 +295,7 @@ void GeneticAlgorithm::crossoverChromozomes(std::size_t i, std::size_t j)
 
 void GeneticAlgorithm::hillclimbPopulation()
 {
+    // unsequential execution
     std::for_each(
         exec::unseq, population.begin(), population.end(),
         [this](auto& chromozome) { hillclimbChromozome(chromozome); });
@@ -300,7 +309,38 @@ void GeneticAlgorithm::hillclimbChromozome(std::size_t index)
 
 void GeneticAlgorithm::hillclimbChromozome(chromozome& chromozome)
 {
-    // TODO: Implement
+    auto best = std::move(chromozome); // moving from chromozome
+    applyHillclimbing(best);           // doing complex operations in here
+    chromozome = std::move(best);      // moving back to chromozome
+}
+
+void GeneticAlgorithm::applyHillclimbing(chromozome& chromozome) const
+{
+    for (auto progress = true; progress;) {
+        progress = hillclimbingStrategy(chromozome);
+    }
+}
+
+bool GeneticAlgorithm::firstImprovementHillclimbing(
+    chromozome& chromozome) const
+{
+    // we create a new vector with this overload, instead of using the already
+    // created decodings positions
+    // it may be a good idea to provide a new oveload which takes a chromozome
+    // and an index and modifies position[index] and then return reference to it
+    auto bestValue = evaluateChromozome(chromozome);
+
+    // this is a std::_Bit_iterator::reference
+    for (auto bit : chromozome) {
+        bit.flip();
+        const auto value = evaluateChromozome(chromozome);
+        if (value < bestValue) {
+            return true;
+            // returning before flipping back
+        }
+        bit.flip();
+    }
+    return false;
 }
 
 void GeneticAlgorithm::printBest() const
@@ -345,7 +385,8 @@ void GeneticAlgorithm::initContainers()
     std::iota(indices.begin(), indices.end(), 0);
 }
 
-void GeneticAlgorithm::initStrategies(CrossoverType crossoverType)
+void GeneticAlgorithm::initStrategies(CrossoverType crossoverType,
+                                      HillclimbingType hillclimbingType)
 {
     decodingStrategy = decodeBinaryVariable;
 
@@ -360,6 +401,16 @@ void GeneticAlgorithm::initStrategies(CrossoverType crossoverType)
             return [this]() { crossoverPopulationSorted(); };
         }
         throw std::runtime_error{"Unknown CrossoverType"};
+    }();
+
+    hillclimbingStrategy =
+        [&]() -> std::function<bool(chromozome & chromozome)> {
+        if (hillclimbingType == HillclimbingType::FirstImprovement) {
+            return [this](chromozome& chromozome) {
+                return firstImprovementHillclimbing(chromozome);
+            };
+        }
+        throw std::runtime_error{"Implement the others"};
     }();
 }
 
