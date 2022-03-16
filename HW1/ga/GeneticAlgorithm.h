@@ -42,30 +42,37 @@ class GeneticAlgorithm
 
   private:
     void randomizePopulationAndInitBest();
+
     /// Decoding chromozome and returning reference to vector to avoid
     /// creating new vector for each call.
     std::vector<double>& decodeChromozome(std::size_t index);
     /// Decoding version for chromozome by reprezentation
     std::vector<double> decodeChromozome(const chromozome& chromozome) const;
 
+    /// evaluating chromozomes outside of population
+    double evaluateChromozome(const chromozome& chromozome) const;
+    double evaluateChromozomeAndUpdateBest(const chromozome& chromozome);
     /// evaluating population members
     double evaluateChromozome(std::size_t index);
     double evaluateChromozomeAndUpdateBest(std::size_t index);
-    /// evaluating chromozomes outside of population
-    double evaluateChromozome(const chromozome& chromozome) const;
 
     /// this has to be done sequentially
     void evaluatePopulation();
+    /// only updates best
+    void updateBestFromPopulation();
+
     /// name is misleading, does not normalize, but computes fitness values in a
     /// single iteration and returns their sum
     double normalizeFitness(double min, double max);
     /// fitness normalization is done while computing selection probabilities,
     /// dividing by the total sum
     void computeSelectionProbabilities(double total);
+
     // TODO: return by value then assign, or return by reference then assign?
     chromozome selectChromozome();
     /// copies in newPopulation selected chromozomes, then swaps vectors
     void selectNewPopulation();
+
     bool stop() const;
 
     /// we mutate all population except half the elites
@@ -89,6 +96,7 @@ class GeneticAlgorithm
     void hillclimbPopulation(); // TODO: test std::threads vs execution::unseq
     void hillclimbChromozome(std::size_t index);
     void hillclimbChromozome(chromozome& chromozome);
+    void hillclimbBest();
     void applyHillclimbing(chromozome& chromozome) const;
     /// this version of first improvement hillclimbing doesn't do any sorting on
     /// indices
@@ -100,6 +108,10 @@ class GeneticAlgorithm
                         HillclimbingType hillclimbingType);
     void initDistributions(
         int populationSize); // we will not need this if template Size
+
+    void printChromozome(const chromozome& chromozome) const;
+    void printChromozomeRepr(const chromozome& chromozome) const;
+    void printPopulation() const;
 
     std::random_device seed;
     std::mt19937_64 gen{seed()};
@@ -144,7 +156,8 @@ class GeneticAlgorithm
 
     /// Takes a std::vector<bool::const_iterator and expects to iterate through
     /// bitsPerVariable variables, without bound checking.
-    std::function<double(const chromozome_cit begin)> decodingStrategy;
+    std::function<double(const chromozome_cit begin, const chromozome_cit end)>
+        decodingStrategy;
     std::function<void()> crossoverPopulationStrategy;
     std::function<bool(chromozome& chromozome)> hillclimbingStrategy;
     FunctionManager function;

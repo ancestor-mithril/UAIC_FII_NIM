@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <execution>
+#include <fstream>
 #include <iostream>
 #include <ranges>
 
@@ -14,10 +15,11 @@ namespace ga {
 
 namespace {
 
-double decodeBinaryVariable(const chromozome_cit begin)
+double
+decodeBinaryVariable(const chromozome_cit begin, const chromozome_cit end)
 {
     // Nice, except the formatting
-    return std::accumulate(begin, std::next(begin, cst::bitsPerVariable), 0LL,
+    return std::accumulate(begin, end, 0LL,
                            [](auto f, auto elem) { return f * 2 + elem; }) /
                (cst::discriminator) * (cst::maximum - cst::minimum) +
            cst::minimum;
@@ -37,9 +39,8 @@ GeneticAlgorithm getDefault(std::string&& functionName)
             0.1,                                // encodingChangeRate
             CrossoverType::Chaotic,             // crossoverType
             HillclimbingType::FirstImprovement, // hillclimbingType
-            100,                                // populationSize
+            cst::populationSize,                // populationSize
             20,                                 // dimensions
-            // TODO: seems to fail with dimensions = 100, check why
             10,  // stepsToHypermutation
             100, // maxNoImprovementSteps
             std::move(functionName),
@@ -101,8 +102,9 @@ std::vector<double>& GeneticAlgorithm::decodeChromozome(std::size_t index)
 {
     auto it = population[index].cbegin();
     for (auto i = 0; i < dimensions; ++i) {
-        decodings[index][i] = decodingStrategy(it);
-        it = std::next(it, bitsPerChromozome);
+        const auto end = std::next(it, cst::bitsPerVariable);
+        decodings[index][i] = decodingStrategy(it, end);
+        it = end;
     }
     // TODO: Refactor to use std algorithm
     return decodings[index];
@@ -115,8 +117,9 @@ GeneticAlgorithm::decodeChromozome(const chromozome& chromozome) const
     x.reserve(dimensions);
     auto it = chromozome.cbegin();
     for (auto i = 0; i < dimensions; ++i) {
-        x.push_back(decodingStrategy(it));
-        it = std::next(it, bitsPerChromozome);
+        const auto end = std::next(it, cst::bitsPerVariable);
+        x.push_back(decodingStrategy(it, end));
+        it = end;
     }
     return x;
 }
@@ -125,6 +128,19 @@ double GeneticAlgorithm::evaluateChromozome(const chromozome& chromozome) const
 {
     auto decoded = decodeChromozome(chromozome);
     return function(decoded);
+}
+
+double
+GeneticAlgorithm::evaluateChromozomeAndUpdateBest(const chromozome& chromozome)
+{
+    auto decoded = decodeChromozome(chromozome);
+    auto ret = function(decoded);
+    if (ret < bestValue) {
+        bestValue = ret;
+        bestChromozome = chromozome;
+        lastImprovement = epoch;
+    }
+    return ret;
 }
 
 double GeneticAlgorithm::evaluateChromozome(std::size_t index)
@@ -150,7 +166,7 @@ void GeneticAlgorithm::evaluatePopulation()
     auto min = fitnesses[0];
     auto max = fitnesses[0];
 
-    std::for_each(indices.begin(), indices.end(), [&](auto i) {
+    std::for_each(std::next(indices.begin()), indices.end(), [&](auto i) {
         fitnesses[i] = evaluateChromozomeAndUpdateBest(i);
         if (fitnesses[i] < min) {
             min = fitnesses[i];
@@ -161,6 +177,12 @@ void GeneticAlgorithm::evaluatePopulation()
     });
 
     computeSelectionProbabilities(normalizeFitness(min, max));
+}
+
+void GeneticAlgorithm::updateBestFromPopulation()
+{
+    std::for_each(indices.begin(), indices.end(),
+                  [&](auto i) { evaluateChromozomeAndUpdateBest(i); });
 }
 
 double GeneticAlgorithm::normalizeFitness(double min, double max)
@@ -307,6 +329,12 @@ void GeneticAlgorithm::hillclimbChromozome(std::size_t index)
     hillclimbChromozome(population[index]);
 }
 
+void GeneticAlgorithm::hillclimbBest()
+{
+    hillclimbChromozome(bestChromozome);
+    evaluateChromozomeAndUpdateBest(bestChromozome);
+}
+
 void GeneticAlgorithm::hillclimbChromozome(chromozome& chromozome)
 {
     auto best = std::move(chromozome); // moving from chromozome
@@ -345,17 +373,47 @@ bool GeneticAlgorithm::firstImprovementHillclimbing(
 
 void GeneticAlgorithm::printBest() const
 {
-    const auto bestDecoded = decodeChromozome(bestChromozome);
     std::cout << "Best: " << bestValue << '\n';
-    for (const auto x : bestDecoded) {
+    printChromozome(bestChromozome);
+}
+
+void GeneticAlgorithm::printChromozome(const chromozome& chromozome) const
+{
+    const auto decoded = decodeChromozome(chromozome);
+    for (const auto x : decoded) {
         std::cout << x << ' ';
     }
     std::cout << '\n';
 }
 
+void GeneticAlgorithm::printChromozomeRepr(const chromozome& chromozome) const
+{
+    const auto decoded = decodeChromozome(chromozome);
+    int i = 0;
+    for (const auto bit : chromozome) {
+        if (i++ % cst::bitsPerVariable == 0) {
+            std::cout << '\n';
+            std::cout << decoded[(i - 1) / cst::bitsPerVariable] << '\n';
+        }
+        std::cout << bit;
+    }
+    std::cout << '\n';
+}
+
+void GeneticAlgorithm::printPopulation() const
+{
+    std::for_each(
+        population.begin(), population.end(),
+        [this](const auto& chromozome) { printChromozome(chromozome); });
+}
+
 void GeneticAlgorithm::run()
 {
     randomizePopulationAndInitBest();
+    // printPopulation();
+    hillclimbPopulation();
+    updateBestFromPopulation();
+
     for (epoch = 0; epoch < maxSteps / populationSize; ++epoch) {
         std::cout << "Epoch: " << epoch << "\tBest: " << bestValue << '\n';
         if (stop()) {
@@ -367,6 +425,11 @@ void GeneticAlgorithm::run()
         evaluatePopulation();
         selectNewPopulation();
     }
+    hillclimbPopulation();
+    // printPopulation();
+    updateBestFromPopulation();
+    hillclimbBest(); // this is supposed to also change encodings to exploit all
+                     // improvements in all implemented representations
     printBest();
 }
 
