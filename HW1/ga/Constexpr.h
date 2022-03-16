@@ -1,12 +1,12 @@
 #pragma once
 
+#include <concepts>
 #include <type_traits>
 
 namespace ga::utils {
 /// https://stackoverflow.com/a/27270730/18441695
-template <typename T, typename U> T consteval pow_c(T base, U exponent)
+template <typename T> T consteval pow_c(T base, std::integral auto exponent)
 {
-    static_assert(std::is_integral<U>(), "exponent must be integral");
     return exponent == 0 ? 1 : base * pow_c(base, exponent - 1);
 }
 

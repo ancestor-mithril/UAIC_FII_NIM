@@ -27,14 +27,17 @@ double decodeBinaryVariable(const chromozome_cit begin)
 
 GeneticAlgorithm getDefault(std::string&& functionName)
 {
+    // TODO: ensure operations run as intended
     return {0.7,   // crossoverProbability
             0.001, // mutationProbability
             0.01,  // hypermutationRate
             0.04,  // elitesPercentage
             10,    // selectionPressure
-            0.1,   // encodingChangeRate
-            100,   // populationSize
-            20,    // dimensions
+            // TODO: Try a lower selection pressure
+            0.1,                    // encodingChangeRate
+            CrossoverType::Chaotic, // crossoverType
+            100,                    // populationSize
+            20,                     // dimensions
             // TODO: seems to fail with dimensions = 100, check why
             10,   // stepsToHypermutation
             1000, // maxNoImprovementSteps
@@ -46,8 +49,8 @@ GeneticAlgorithm getDefault(std::string&& functionName)
 GeneticAlgorithm::GeneticAlgorithm(
     double crossoverProbability, double mutationProbability,
     double hypermutationRate, double elitesPercentage, double selectionPressure,
-    double encodingChangeRate, int populationSize, int dimensions,
-    int stepsToHypermutation, int maxNoImprovementSteps,
+    double encodingChangeRate, CrossoverType crossoverType, int populationSize,
+    int dimensions, int stepsToHypermutation, int maxNoImprovementSteps,
     std::string&& functionName, bool applyShift, bool applyRotation)
     // clang-format off
     : crossoverProbability{crossoverProbability}
@@ -69,21 +72,10 @@ GeneticAlgorithm::GeneticAlgorithm(
     std::cout << "Using " << cst::bitsPerVariable << " bits per variable\n";
     std::cout << "Using " << cst::discriminator << " discriminator\n";
     std::cout << "Using " << bitsPerChromozome << " bits per chromozome\n";
-    for (auto i = 0; i < populationSize; ++i) {
-        population.push_back(chromozome(bitsPerChromozome, true));
-        newPopulation.push_back(chromozome(bitsPerChromozome, true));
-        // will be randomized at each run call
-        decodings.push_back(std::vector<double>(dimensions, 0.0));
-    }
 
-    fitnesses.resize(populationSize);
-    selectionProbabilities.resize(populationSize);
-    indices.resize(populationSize);
-    std::iota(indices.begin(), indices.end(), 0);
-
-    decodingStrategy = decodeBinaryVariable;
-    radomChromozome = std::uniform_int_distribution<>{0, populationSize - 1};
-    randomSlice = std::uniform_int_distribution<>{0, bitsPerChromozome - 1};
+    initContainers();
+    initStrategies(crossoverType);
+    initDistributions(populationSize);
 }
 
 void GeneticAlgorithm::sanityCheck()
@@ -252,14 +244,24 @@ void GeneticAlgorithm::mutateChromozome(chromozome& chromozome)
     // container. Might do so for char.
 }
 
-void GeneticAlgorithm::crossoverPopulation()
+void GeneticAlgorithm::crossoverPopulationChaotic()
 {
     std::for_each(indices.begin(), indices.end(), [this](auto i) {
-        if (randomDouble(gen) < crossoverProbability) {
+        if (randomDouble(gen) < crossoverProbability / 2) {
             crossoverChromozomes(i, radomChromozome(gen));
         }
     });
     // should not be parallelized because it has side effects
+}
+
+void GeneticAlgorithm::crossoverPopulationClassic()
+{
+    // TODO
+}
+
+void GeneticAlgorithm::crossoverPopulationSorted()
+{
+    // TODO
 }
 
 void GeneticAlgorithm::crossoverChromozomes(std::size_t i, std::size_t j)
@@ -321,11 +323,50 @@ void GeneticAlgorithm::run()
         }
 
         mutatePopulation();
-        crossoverPopulation();
+        crossoverPopulationStrategy();
         evaluatePopulation();
         selectNewPopulation();
     }
     printBest();
+}
+
+void GeneticAlgorithm::initContainers()
+{
+    for (auto i = 0; i < populationSize; ++i) {
+        population.push_back(chromozome(bitsPerChromozome, true));
+        // population will be randomized at each run call
+        newPopulation.push_back(chromozome(bitsPerChromozome, true));
+        decodings.push_back(std::vector<double>(dimensions, 0.0));
+    }
+
+    fitnesses.resize(populationSize);
+    selectionProbabilities.resize(populationSize);
+    indices.resize(populationSize);
+    std::iota(indices.begin(), indices.end(), 0);
+}
+
+void GeneticAlgorithm::initStrategies(CrossoverType crossoverType)
+{
+    decodingStrategy = decodeBinaryVariable;
+
+    crossoverPopulationStrategy = [&]() -> std::function<void()> {
+        if (crossoverType == CrossoverType::Chaotic) {
+            return [this]() { crossoverPopulationChaotic(); };
+        }
+        if (crossoverType == CrossoverType::Classic) {
+            return [this]() { crossoverPopulationClassic(); };
+        }
+        if (crossoverType == CrossoverType::Sorted) {
+            return [this]() { crossoverPopulationSorted(); };
+        }
+        throw std::runtime_error{"Unknown CrossoverType"};
+    }();
+}
+
+void GeneticAlgorithm::initDistributions(int populationSize)
+{
+    radomChromozome = std::uniform_int_distribution<>{0, populationSize - 1};
+    randomSlice = std::uniform_int_distribution<>{0, bitsPerChromozome - 1};
 }
 
 } // namespace ga

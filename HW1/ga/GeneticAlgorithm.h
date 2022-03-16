@@ -10,6 +10,13 @@ namespace ga {
 using chromozome_cit = std::vector<bool>::const_iterator;
 using chromozome = std::vector<bool>;
 
+enum class CrossoverType
+{
+    Chaotic,
+    Classic,
+    Sorted,
+};
+
 // TODO: Maybe use template for population size
 class GeneticAlgorithm
 {
@@ -17,10 +24,10 @@ class GeneticAlgorithm
     GeneticAlgorithm(double crossoverProbability, double mutationProbability,
                      double hypermutationRate, double elitesPercentage,
                      double selectionPressure, double encodingChangeRate,
-                     int populationSize, int dimensions,
-                     int stepsToHypermutation, int maxNoImprovementSteps,
-                     std::string&& functionName, bool applyShift,
-                     bool applyRotation);
+                     CrossoverType crossoverType, int populationSize,
+                     int dimensions, int stepsToHypermutation,
+                     int maxNoImprovementSteps, std::string&& functionName,
+                     bool applyShift, bool applyRotation);
     void sanityCheck();
     void run();
     void printBest() const; // TODO: also add stream to print to
@@ -56,15 +63,27 @@ class GeneticAlgorithm
     /// of a function call
     void mutateChromozome(chromozome& chromozome);
 
-    /// sorting is an expensive operation, our approach is to randomly select
-    /// target for crossover
-    void crossoverPopulation();
+    /// selection unique chormozomes for crossover and for each of them do
+    /// crossover with one (any) random chromozome (could even be itself, is
+    /// this ok?)
+    void crossoverPopulationChaotic();
+    /// doing crossover only between unique chromozomes in a single iteration
+    void crossoverPopulationClassic();
+    /// sorting indices and doing crossover only for indices with value lower
+    /// than crossoverProbability
+    void crossoverPopulationSorted();
     void crossoverChromozomes(std::size_t i, std::size_t j);
 
     /// applies one iteration of hillclimbing to all population
     void hillclimbPopulation(); // TODO: test std::threads vs execution::unseq
     void hillclimbChromozome(std::size_t index);
     void hillclimbChromozome(chromozome& chromozome);
+
+    /// ctor stuff
+    void initContainers();
+    void initStrategies(CrossoverType crossoverType);
+    void initDistributions(
+        int populationSize); // we will not need this if template Size
 
     // const?
     std::random_device seed;
@@ -112,6 +131,7 @@ class GeneticAlgorithm
     /// Takes a std::vector<bool::const_iterator and expects to iterate through
     /// bitsPerVariable variables, without bound checking.
     std::function<double(const chromozome_cit begin)> decodingStrategy;
+    std::function<void()> crossoverPopulationStrategy;
     FunctionManager function;
 };
 
