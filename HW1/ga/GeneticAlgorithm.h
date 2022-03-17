@@ -7,8 +7,8 @@
 
 namespace ga {
 
-using chromozome_cit = std::vector<bool>::const_iterator;
 using chromozome = std::vector<bool>;
+using chromozome_cit = chromozome::const_iterator; // rename?, or remove?
 
 enum class CrossoverType
 {
@@ -28,6 +28,7 @@ enum class HillclimbingType
 class GeneticAlgorithm
 {
   public:
+  // TODO: Change clang format to one parameter per line
     GeneticAlgorithm(double crossoverProbability, double mutationProbability,
                      double hypermutationRate, double elitesPercentage,
                      double selectionPressure, double encodingChangeRate,
@@ -47,12 +48,14 @@ class GeneticAlgorithm
     /// creating new vector for each call.
     std::vector<double>& decodeChromozome(std::size_t index);
     /// Decoding version for chromozome by reprezentation
+    /// Creates new vector
     std::vector<double> decodeChromozome(const chromozome& chromozome) const;
 
     /// evaluating chromozomes outside of population
+    /// uses decodeChromozome 2nd overload
     double evaluateChromozome(const chromozome& chromozome) const;
     double evaluateChromozomeAndUpdateBest(const chromozome& chromozome);
-    /// evaluating population members
+    /// evaluating population members by index
     double evaluateChromozome(std::size_t index);
     double evaluateChromozomeAndUpdateBest(std::size_t index);
 
@@ -77,11 +80,9 @@ class GeneticAlgorithm
 
     /// we mutate all population except half the elites
     void mutatePopulation();
-    /// doing chromozome mutation in a separate method comes with the overhead
-    /// of a function call
     void mutateChromozome(chromozome& chromozome);
 
-    /// selection unique chormozomes for crossover and for each of them do
+    /// select unique chormozomes for crossover and for each of them do
     /// crossover with one (any) random chromozome (could even be itself, is
     /// this ok?)
     void crossoverPopulationChaotic();
@@ -101,6 +102,11 @@ class GeneticAlgorithm
     /// this version of first improvement hillclimbing doesn't do any sorting on
     /// indices
     bool firstImprovementHillclimbing(chromozome& chromozome) const;
+    // TODO: add first improvement with random sorting, best improvement, worst improvement (?)
+
+    /// Adaptation of hyperparameters depending on various factors
+    void adapt();
+    // TODO: adapt better
 
     /// ctor stuff
     void initContainers();
@@ -124,7 +130,7 @@ class GeneticAlgorithm
     // TODO: use const where we should use const
     double crossoverProbability;
     double mutationProbability;
-    const double hypermutationRate;
+    double hypermutationRate;
     const double elitesPercentage;
     const double selectionPressure;
     double encodingChangeRate;
@@ -154,8 +160,7 @@ class GeneticAlgorithm
     // selectionProbabilities.size() == population, it might be an idea to use
     // std array
 
-    /// Takes a std::vector<bool::const_iterator and expects to iterate through
-    /// bitsPerVariable variables, without bound checking.
+    /// applies decoding within bounds
     std::function<double(const chromozome_cit begin, const chromozome_cit end)>
         decodingStrategy;
     std::function<void()> crossoverPopulationStrategy;

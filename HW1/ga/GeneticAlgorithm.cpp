@@ -29,7 +29,6 @@ decodeBinaryVariable(const chromozome_cit begin, const chromozome_cit end)
 
 GeneticAlgorithm getDefault(std::string&& functionName)
 {
-    // TODO: ensure operations run as intended
     return {0.7,   // crossoverProbability
             0.001, // mutationProbability
             0.01,  // hypermutationRate
@@ -40,12 +39,12 @@ GeneticAlgorithm getDefault(std::string&& functionName)
             CrossoverType::Chaotic,             // crossoverType
             HillclimbingType::FirstImprovement, // hillclimbingType
             cst::populationSize,                // populationSize
-            20,                                 // dimensions
-            10,  // stepsToHypermutation
-            100, // maxNoImprovementSteps
+            10,                                 // dimensions
+            10,                                 // stepsToHypermutation
+            1000,                                // maxNoImprovementSteps
             std::move(functionName),
-            false,  // applyShift
-            false}; // applyRotation
+            true,  // applyShift
+            true}; // applyRotation
 }
 
 GeneticAlgorithm::GeneticAlgorithm(
@@ -85,13 +84,15 @@ void GeneticAlgorithm::sanityCheck()
 {
     std::cout << "GeneticAlgorithm::sanityCheck" << '\n';
     std::cout << evaluateChromozome(0) << '\n';
+    std::vector<double> ourCheck(dimensions, 0.0);
+    std::cout << function(ourCheck);
 }
 
 void GeneticAlgorithm::randomizePopulationAndInitBest()
 {
     for (auto& chromozome : population) {
-        for (auto i = 0; i < bitsPerChromozome; ++i) {
-            chromozome[i] = randomBool(gen);
+        for (auto bit : chromozome) {
+            bit = randomBool(gen); // bit is ref
         }
     }
     bestChromozome = population[0];
@@ -166,21 +167,27 @@ void GeneticAlgorithm::evaluatePopulation()
     auto min = fitnesses[0];
     auto max = fitnesses[0];
 
-    std::for_each(std::next(indices.begin()), indices.end(), [&](auto i) {
-        fitnesses[i] = evaluateChromozomeAndUpdateBest(i);
-        if (fitnesses[i] < min) {
-            min = fitnesses[i];
-        }
-        if (fitnesses[i] > max) {
-            max = fitnesses[i];
-        }
-    });
+    // should not be parallelized because it has sided effects (setting best,
+    // min, max)
+    // TODO: do apdate best with min, not for every index
+    std::transform(std::next(indices.begin()), indices.end(),
+                   std::next(fitnesses.begin()), [&](auto i) {
+                       auto value = evaluateChromozomeAndUpdateBest(i);
+                       if (value < min) {
+                           min = fitnesses[i];
+                       }
+                       if (value > max) {
+                           max = fitnesses[i];
+                       }
+                       return value;
+                   });
 
     computeSelectionProbabilities(normalizeFitness(min, max));
 }
 
 void GeneticAlgorithm::updateBestFromPopulation()
 {
+    // TODO: just evaluate all and do update only with the best
     std::for_each(indices.begin(), indices.end(),
                   [&](auto i) { evaluateChromozomeAndUpdateBest(i); });
 }
@@ -218,23 +225,24 @@ chromozome GeneticAlgorithm::selectChromozome()
         }
     }
     // this is returned by value hoping for RVO
+    // TODO: test
     return population[populationSize - 1];
 }
 
 void GeneticAlgorithm::selectNewPopulation()
 {
+
     if (elitesNumber > 0) {
         // using indices for partial sorting
+        const auto elitesEnd = std::next(indices.begin(), elitesNumber);
         std::nth_element(
-            indices.begin(), std::next(indices.begin(), elitesNumber),
-            indices.end(), [this](auto i, auto j) {
+            indices.begin(), elitesEnd, indices.end(), [this](auto i, auto j) {
                 return selectionProbabilities[i] > selectionProbabilities[j];
             });
 
         // moving best elitesNumber chromozomes to elites
-        std::transform(
-            indices.begin(), std::next(indices.begin(), elitesNumber),
-            newPopulation.begin(), [this](auto i) { return population[i]; });
+        std::transform(indices.begin(), elitesEnd, newPopulation.begin(),
+                       [this](auto i) { return population[i]; });
 
         // reseting indices
         std::iota(indices.begin(), indices.end(), 0);
@@ -244,6 +252,7 @@ void GeneticAlgorithm::selectNewPopulation()
         std::next(population.begin(), elitesNumber), population.end(),
         std::next(newPopulation.begin(), elitesNumber),
         [this]([[maybe_unused]] auto& elem) { return selectChromozome(); });
+    // Swapping back
     population.swap(newPopulation);
 }
 
@@ -256,22 +265,22 @@ bool GeneticAlgorithm::stop() const
 void GeneticAlgorithm::mutatePopulation()
 {
     // skipping half the elites
-    const auto begin = std::next(population.begin(), elitesNumber / 2);
-    std::for_each(begin, population.end(),
-                  [&](auto& x) { mutateChromozome(x); });
+    std::for_each(std::next(population.begin(), elitesNumber / 2),
+                  population.end(), [&](auto& x) { mutateChromozome(x); });
     // This can be vectorized (std::execution::unseq), and tested if it brings
     // any benefit for such a small population. Might do in the long run.
+    // Side effects due to using generator in multiple threads?
 }
 
 void GeneticAlgorithm::mutateChromozome(chromozome& chromozome)
 {
-    for (auto i = 0; i < bitsPerChromozome; ++i) {
+    for (auto bit : chromozome) {
         if (randomDouble(gen) < mutationProbability) {
-            chromozome[i] = not chromozome[i];
+            bit.flip();
         }
     }
-    // Not using std algorithm to iterate over bool container because it's not a
-    // container. Might do so for char.
+    // This solution would not work if using vector of char
+    // TODO: Add template specialization for bool and char for these kind of methods
 }
 
 void GeneticAlgorithm::crossoverPopulationChaotic()
@@ -305,6 +314,7 @@ void GeneticAlgorithm::crossoverChromozomes(std::size_t i, std::size_t j)
         population[i].swap(population[i][k], population[j][k]);
     }
 
+    // TODO: should be a template specialization
     // Swap version for vector of char, might not work for bool because
     // iterator is not LegacyForwardIterator
     //
@@ -321,6 +331,7 @@ void GeneticAlgorithm::hillclimbPopulation()
     std::for_each(
         exec::unseq, population.begin(), population.end(),
         [this](auto& chromozome) { hillclimbChromozome(chromozome); });
+        // TODO: test all execution contexts to check if there is any improvement
 }
 
 void GeneticAlgorithm::hillclimbChromozome(std::size_t index)
@@ -331,6 +342,7 @@ void GeneticAlgorithm::hillclimbChromozome(std::size_t index)
 
 void GeneticAlgorithm::hillclimbBest()
 {
+    // TODO: here we would actually need to change encoding until no possible improvement can be done
     hillclimbChromozome(bestChromozome);
     evaluateChromozomeAndUpdateBest(bestChromozome);
 }
@@ -352,7 +364,7 @@ void GeneticAlgorithm::applyHillclimbing(chromozome& chromozome) const
 bool GeneticAlgorithm::firstImprovementHillclimbing(
     chromozome& chromozome) const
 {
-    // we create a new vector with this overload, instead of using the already
+    // we create a new vector with this method, instead of using the already
     // created decodings positions
     // it may be a good idea to provide a new oveload which takes a chromozome
     // and an index and modifies position[index] and then return reference to it
@@ -368,7 +380,18 @@ bool GeneticAlgorithm::firstImprovementHillclimbing(
         }
         bit.flip();
     }
-    return false;
+    return false; // no improvement could be done
+}
+
+void GeneticAlgorithm::adapt()
+{
+    // hypermutation
+    if (epoch % stepsToHypermutation == 0 or epoch % stepsToHypermutation == 1) {
+        std::swap(hypermutationRate, mutationProbability);
+    }
+
+    // TODO: add encoding change
+    // changing encodings is good to go over hamming walls
 }
 
 void GeneticAlgorithm::printBest() const
@@ -419,6 +442,7 @@ void GeneticAlgorithm::run()
         if (stop()) {
             break;
         }
+        adapt();
 
         mutatePopulation();
         crossoverPopulationStrategy();
@@ -451,6 +475,7 @@ void GeneticAlgorithm::initContainers()
 void GeneticAlgorithm::initStrategies(CrossoverType crossoverType,
                                       HillclimbingType hillclimbingType)
 {
+    // TODO: add gray decoding strategy
     decodingStrategy = decodeBinaryVariable;
 
     crossoverPopulationStrategy = [&]() -> std::function<void()> {

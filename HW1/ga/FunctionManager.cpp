@@ -138,8 +138,6 @@ FunctionManager::FunctionManager(std::string&& functionName, int dimensions,
 
     if ((shiftFlag or rotateFlag) and dimensions != 10 and dimensions != 20) {
         // not very flexible...
-        // an idea is to create class outside and move it into a lambda, so that
-        // we could have different version of function managers ??
         throw std::runtime_error{"This Function Manager accepts only 10 or 20 "
                                  "dimensions when shifting or rotating"};
     }
@@ -164,6 +162,7 @@ FunctionManager::initFunction(int dimensions, bool shiftFlag, bool rotateFlag)
                        const std::vector<std::vector<double>>&, bool, bool)>,
                    double>>
         basicFunctions = {
+            // TODO: find what 300.0 and the likes are and if we even need to add them
             {"zakharov_func"s, {1, zakharov_func, 300.0}},
             {"rosenbrock_func"s, {2, rosenbrock_func, 400.0}},
             {"schaffer_F7_func"s, {3, schaffer_F7_func, 600.0}},

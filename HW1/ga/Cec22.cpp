@@ -19,8 +19,7 @@ void shiftfunc(std::vector<double>& x, const std::vector<double>& shift)
     // assuming x.size() == shift.size()
     std::transform(x.begin(), x.end(), shift.begin(), x.begin(),
                    std::minus<double>());
-    // Would it be worth to parallelize (vectorize) this for under 100 elements?
-    // TODO: Check what can be vectorized
+    // TODO: Check what nethods can be vectorized
 }
 
 std::vector<double> rotatefunc(std::vector<double>& x,
@@ -41,13 +40,13 @@ shift_rotate_transform(std::vector<double>& x, const std::vector<double>& shift,
                        const std::vector<std::vector<double>>& rotate,
                        double shift_rate, bool shift_flag, bool rotate_flag)
 {
-    // TODO: also try template bool and measure performance
+    // template bool and if constexpr
     if (shift_flag) [[likely]] {
         shiftfunc(x, shift);
     }
     std::transform(x.begin(), x.end(), x.begin(),
                    std::bind(std::multiplies<double>(), std::placeholders::_1,
-                             shift_rate)); // might be worth using unseq
+                             shift_rate));
     if (rotate_flag) [[likely]] {
         return rotatefunc(x, rotate);
     }
@@ -92,7 +91,9 @@ double composition_function_calculator(const std::vector<double>& x,
                                        const std::array<int, Size>& delta,
                                        const std::array<double, Size>& fit)
 {
+    // TODO: Revisit this method!!
     auto w_max = 0.0;
+    auto w_sum = 0.0;
     std::array<double, Size> w{};
     for (std::size_t i = 0; i < Size; ++i) {
         for (std::size_t j = 0; j < x.size(); ++j) {
@@ -111,26 +112,27 @@ double composition_function_calculator(const std::vector<double>& x,
         if (w[i] > w_max) {
             w_max = w[i];
         }
+        w_sum += w[i];
     }
 
-    // This does not happen if Size > 0
-    // if (w_max == 0.0) [[unlikely]] {
-    //     return std::accumulate(
-    //         fit.begin(), fit.end(), 0.0,
-    //         [](auto f, auto elem) { return f + elem / Size; });
-    // }
+    // This does not happen if there's any w[i] >= 0
+    if (w_max == 0.0) [[unlikely]] {
+        return std::accumulate(
+            fit.begin(), fit.end(), 0.0,
+            [](auto f, auto elem) { return f + elem / Size; });
+    }
 
-    // std::transform_reduce is the parallelized version of std::inner_product,
-    // however we know that w.size() is small.
+    // we could calculate w_sum in the previous iteration
     return std::inner_product(
         w.begin(), w.end(), fit.begin(), 0.0, std::plus<double>(),
-        [w_sum = std::accumulate(w.begin(), w.end(), 0.0)](auto w, auto fit) {
+        [=](auto w, auto fit) {
             return w / w_sum * fit;
         });
 }
 
 } // namespace
 
+// TODO: visit bellow
 double ackley_func(std::vector<double>& x, const std::vector<double>& shift,
                    const std::vector<std::vector<double>>& rotate,
                    bool shift_flag, bool rotate_flag)
