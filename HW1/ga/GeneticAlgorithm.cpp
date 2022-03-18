@@ -29,22 +29,22 @@ decodeBinaryVariable(const chromozome_cit begin, const chromozome_cit end)
 
 GeneticAlgorithm getDefault(std::string&& functionName)
 {
-    return {0.7,   // crossoverProbability
+    // TODO: Make tests
+    return {0.7,  // crossoverProbability
             0.001, // mutationProbability
             0.01,  // hypermutationRate
-            0.04,  // elitesPercentage
-            10,    // selectionPressure
-            // TODO: Try a lower selection pressure
+            0.04, // elitesPercentage
+            10.0,   // selectionPressure
             0.1,                                // encodingChangeRate
-            CrossoverType::Chaotic,             // crossoverType
+            CrossoverType::Classic,             // crossoverType
             HillclimbingType::FirstImprovement, // hillclimbingType
             cst::populationSize,                // populationSize
-            20,                                 // dimensions
+            10,                                 // dimensions
             10,                                 // stepsToHypermutation
-            1000,                               // maxNoImprovementSteps
+            2000,                               // maxNoImprovementSteps
             std::move(functionName),
-            true,  // applyShift
-            true}; // applyRotation
+            false,  // applyShift
+            false}; // applyRotation
 }
 
 GeneticAlgorithm::GeneticAlgorithm(
@@ -189,15 +189,15 @@ void GeneticAlgorithm::evaluatePopulation()
 
     // should not be parallelized because it has sided effects (setting best,
     // min, max)
-    // TODO: do apdate best with min, not for every index
+    // TODO: do not try to update best every time
     std::transform(std::next(indices.begin()), indices.end(),
                    std::next(fitnesses.begin()), [&](auto i) {
                        auto value = evaluateChromozomeAndUpdateBest(i);
                        if (value < min) {
-                           min = fitnesses[i];
+                           min = value;
                        }
                        if (value > max) {
-                           max = fitnesses[i];
+                           max = value;
                        }
                        return value;
                    });
@@ -276,6 +276,12 @@ void GeneticAlgorithm::selectNewPopulation()
     population.swap(newPopulation);
 }
 
+void GeneticAlgorithm::evaluateAndSelect()
+{
+    evaluatePopulation();
+    selectNewPopulation();
+}
+
 bool GeneticAlgorithm::stop() const
 {
     return (epoch - lastImprovement > maxNoImprovementSteps);
@@ -316,12 +322,40 @@ void GeneticAlgorithm::crossoverPopulationChaotic()
 
 void GeneticAlgorithm::crossoverPopulationClassic()
 {
-    // TODO
+    bool pair = false;
+    auto pairIndex = 0;
+    for (auto i = 0; i < populationSize; ++i) {
+        if (randomDouble(gen) < crossoverProbability) {
+            if (pair) {
+                crossoverChromozomes(i, pairIndex);
+            } else {
+                pairIndex = i;
+            }
+            pair = not pair;
+        }
+    }
 }
 
 void GeneticAlgorithm::crossoverPopulationSorted()
 {
-    // TODO
+    std::transform(
+        selectionProbabilities.begin(), selectionProbabilities.end(),
+        selectionProbabilities.begin(),
+        [this]([[maybe_unused]] auto elem) { return randomDouble(gen); });
+    // sorting by p
+    std::sort(indices.begin(), indices.end(), [this](auto a, auto b) {
+        return selectionProbabilities[a] < selectionProbabilities[b];
+    });
+    // crossover between first x and last x chromozomes
+    // should have taken pairs of 2 instead?
+    for (auto i = 0; i < populationSize; ++i) {
+        if (selectionProbabilities[indices[i]] > crossoverProbability / 2) {
+            break;
+        }
+        crossoverChromozomes(indices[i], indices[populationSize - i - 1]);
+    }
+    // reseting indices
+    std::iota(indices.begin(), indices.end(), 0);
 }
 
 void GeneticAlgorithm::crossoverChromozomes(std::size_t i, std::size_t j)
@@ -407,7 +441,6 @@ void GeneticAlgorithm::adapt()
     if (epoch % stepsToHypermutation == 0 or
         epoch % stepsToHypermutation == 1) {
         std::swap(hypermutationRate, mutationProbability);
-        std::cout << "Mutation is now " << mutationProbability << '\n';
     }
 
     // TODO: add encoding change
@@ -455,11 +488,13 @@ void GeneticAlgorithm::run()
 {
     randomizePopulationAndInitBest();
     // printPopulation();
-    hillclimbPopulation();
+    // hillclimbPopulation();
     updateBestFromPopulation();
 
     for (epoch = 0; epoch < maxSteps / populationSize; ++epoch) {
-        std::cout << "Epoch: " << epoch << "\tBest: " << bestValue << '\n';
+        if (epoch % 10 == 0) {
+            std::cout << "Epoch: " << epoch << "\tBest: " << bestValue << '\n';
+        }
         if (stop()) {
             break;
         }
@@ -467,8 +502,7 @@ void GeneticAlgorithm::run()
 
         mutatePopulation();
         crossoverPopulationStrategy();
-        evaluatePopulation();
-        selectNewPopulation();
+        evaluateAndSelect();
     }
     hillclimbPopulation();
     // printPopulation();

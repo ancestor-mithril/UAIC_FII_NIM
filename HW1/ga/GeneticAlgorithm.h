@@ -81,6 +81,9 @@ class GeneticAlgorithm
     /// copies in newPopulation selected chromozomes, then swaps vectors
     void selectNewPopulation();
 
+    /// evaluates population and slects new population
+    void evaluateAndSelect();
+
     bool stop() const;
 
     /// we mutate all population except half the elites
