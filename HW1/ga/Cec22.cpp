@@ -223,6 +223,7 @@ double grie_rosen_func(std::vector<double>& x, std::vector<double>& aux,
         const auto temp = 100.0 * temp1 * temp1 + temp2 * temp2;
         f += (temp * temp) / 4000.0 - std::cos(temp) + 1.0;
     }
+    // TODO: last
     const auto temp1 = x[x.size() - 1] * x[x.size() - 1] - x[0];
     const auto temp2 = x[x.size() - 1] - 1.0;
     const auto temp = 100.0 * temp1 * temp1 + temp2 * temp2;
@@ -367,7 +368,8 @@ double levy_func(std::vector<double>& x, std::vector<double>& aux,
 {
     shift_rotate_transform(x, aux, shift, rotate, 1.0, shift_flag, rotate_flag);
     const auto w = [](auto elem) { return 1.0 + (elem - 1.0) / 4.0; };
-    const auto term1 = std::sin(PI * w(x[1]));
+    const auto term1 = std::sin(PI * w(x[1])); // ???
+    // TODO: check
     const auto term2 = std::accumulate(
         x.begin(), std::prev(x.end()), 0.0, [&w](auto f, auto elem) {
             const auto wi = w(elem);
@@ -400,6 +402,7 @@ double katsuura_func(std::vector<double>& x, std::vector<double>& aux,
                      const std::vector<std::vector<double>>& rotate,
                      bool shift_flag, bool rotate_flag)
 {
+    // todo: get size upfront
     shift_rotate_transform(x, aux, shift, rotate, 5.0 / 100.0, shift_flag,
                            rotate_flag);
     auto f = 1.0;

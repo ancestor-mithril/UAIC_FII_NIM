@@ -39,7 +39,7 @@ GeneticAlgorithm getDefault(std::string&& functionName)
             CrossoverType::Chaotic,             // crossoverType
             HillclimbingType::FirstImprovement, // hillclimbingType
             cst::populationSize,                // populationSize
-            10,                                 // dimensions
+            20,                                 // dimensions
             10,                                 // stepsToHypermutation
             1000,                               // maxNoImprovementSteps
             std::move(functionName),
@@ -102,7 +102,14 @@ void GeneticAlgorithm::randomizePopulationAndInitBest()
 
 std::vector<double>& GeneticAlgorithm::decodeChromozome(std::size_t index)
 {
-    auto it = population[index].cbegin();
+    return decodeChromozome(population[index], index);
+}
+
+std::vector<double>&
+GeneticAlgorithm::decodeChromozome(const chromozome& chromozome,
+                                   std::size_t index)
+{
+    auto it = chromozome.cbegin();
     for (auto i = 0; i < dimensions; ++i) {
         const auto end = std::next(it, cst::bitsPerVariable);
         decodings[index][i] = decodingStrategy(it, end);
@@ -154,6 +161,12 @@ GeneticAlgorithm::evaluateChromozomeAndUpdateBest(const chromozome& chromozome)
 double GeneticAlgorithm::evaluateChromozome(std::size_t index)
 {
     return function(decodeChromozome(index), auxiliars[index]);
+}
+
+double GeneticAlgorithm::evaluateChromozome(const chromozome& chromozome,
+                                            std::size_t index)
+{
+    return function(decodeChromozome(chromozome, index), auxiliars[index]);
 }
 
 double GeneticAlgorithm::evaluateChromozomeAndUpdateBest(std::size_t index)
@@ -336,53 +349,49 @@ void GeneticAlgorithm::crossoverChromozomes(std::size_t i, std::size_t j)
 void GeneticAlgorithm::hillclimbPopulation()
 {
     // unsequential execution
-    std::for_each(
-        exec::unseq, population.begin(), population.end(),
-        [this](auto& chromozome) { hillclimbChromozome(chromozome); });
+    std::for_each(exec::unseq, indices.begin(), indices.end(),
+                  [this](auto index) { hillclimbChromozome(index); });
     // TODO: test all execution contexts to check if there is any improvement
 }
 
 void GeneticAlgorithm::hillclimbChromozome(std::size_t index)
 {
-    // if not used, remove
-    hillclimbChromozome(population[index]);
+    hillclimbChromozome(population[index], index);
 }
 
 void GeneticAlgorithm::hillclimbBest()
 {
     // TODO: here we would actually need to change encoding until no possible
     // improvement can be done
-    hillclimbChromozome(bestChromozome);
+    hillclimbChromozome(bestChromozome, 0); // using 1st index because its free
     evaluateChromozomeAndUpdateBest(bestChromozome);
 }
 
-void GeneticAlgorithm::hillclimbChromozome(chromozome& chromozome)
+void GeneticAlgorithm::hillclimbChromozome(chromozome& chromozome,
+                                           std::size_t index)
 {
     auto best = std::move(chromozome); // moving from chromozome
-    applyHillclimbing(best);           // doing complex operations in here
+    applyHillclimbing(best, index);    // doing complex operations in here
     chromozome = std::move(best);      // moving back to chromozome
 }
 
-void GeneticAlgorithm::applyHillclimbing(chromozome& chromozome) const
+void GeneticAlgorithm::applyHillclimbing(chromozome& chromozome,
+                                         std::size_t index)
 {
     for (auto progress = true; progress;) {
-        progress = hillclimbingStrategy(chromozome);
+        progress = hillclimbingStrategy(chromozome, index);
     }
 }
 
-bool GeneticAlgorithm::firstImprovementHillclimbing(
-    chromozome& chromozome) const
+bool GeneticAlgorithm::firstImprovementHillclimbing(chromozome& chromozome,
+                                                    std::size_t index)
 {
-    // we create a new vector with this method, instead of using the already
-    // created decodings positions
-    // it may be a good idea to provide a new oveload which takes a chromozome
-    // and an index and modifies position[index] and then return reference to it
-    auto bestValue = evaluateChromozome(chromozome);
+    auto bestValue = evaluateChromozome(chromozome, index);
 
     // this is a std::_Bit_iterator::reference
     for (auto bit : chromozome) {
         bit.flip();
-        const auto value = evaluateChromozome(chromozome);
+        const auto value = evaluateChromozome(chromozome, index);
         if (value < bestValue) {
             return true;
             // returning before flipping back
@@ -398,6 +407,7 @@ void GeneticAlgorithm::adapt()
     if (epoch % stepsToHypermutation == 0 or
         epoch % stepsToHypermutation == 1) {
         std::swap(hypermutationRate, mutationProbability);
+        std::cout << "Mutation is now " << mutationProbability << '\n';
     }
 
     // TODO: add encoding change
@@ -412,6 +422,7 @@ void GeneticAlgorithm::printBest() const
 
 void GeneticAlgorithm::printChromozome(const chromozome& chromozome) const
 {
+    // TODO: make template for bool
     const auto decoded = decodeChromozome(chromozome);
     for (const auto x : decoded) {
         std::cout << x << ' ';
@@ -503,10 +514,10 @@ void GeneticAlgorithm::initStrategies(CrossoverType crossoverType,
     }();
 
     hillclimbingStrategy =
-        [&]() -> std::function<bool(chromozome & chromozome)> {
+        [&]() -> std::function<bool(chromozome&, std::size_t)> {
         if (hillclimbingType == HillclimbingType::FirstImprovement) {
-            return [this](chromozome& chromozome) {
-                return firstImprovementHillclimbing(chromozome);
+            return [this](chromozome& chromozome, std::size_t index) {
+                return firstImprovementHillclimbing(chromozome, index);
             };
         }
         throw std::runtime_error{"Implement the others"};

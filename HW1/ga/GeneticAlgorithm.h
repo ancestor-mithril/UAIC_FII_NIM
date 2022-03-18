@@ -47,8 +47,10 @@ class GeneticAlgorithm
     /// Decoding chromozome and returning reference to vector to avoid
     /// creating new vector for each call.
     std::vector<double>& decodeChromozome(std::size_t index);
-    /// Decoding version for chromozome by reprezentation
-    /// Creates new vector
+    /// uses decodings[index]
+    std::vector<double>&
+    decodeChromozome(const chromozome& chromozome, std::size_t index);
+    /// Decoding version for chromozome which creates new vector
     std::vector<double> decodeChromozome(const chromozome& chromozome) const;
 
     /// evaluating chromozomes outside of population
@@ -57,6 +59,9 @@ class GeneticAlgorithm
     double evaluateChromozomeAndUpdateBest(const chromozome& chromozome);
     /// evaluating population members by index
     double evaluateChromozome(std::size_t index);
+    /// evaluates chromozome outside of population, but uses decodings[index]
+    /// for decoding
+    double evaluateChromozome(const chromozome& chromozome, std::size_t index);
     double evaluateChromozomeAndUpdateBest(std::size_t index);
 
     /// this has to be done sequentially
@@ -96,12 +101,13 @@ class GeneticAlgorithm
     /// applies one iteration of hillclimbing to all population
     void hillclimbPopulation(); // TODO: test std::threads vs execution::unseq
     void hillclimbChromozome(std::size_t index);
-    void hillclimbChromozome(chromozome& chromozome);
+    void hillclimbChromozome(chromozome& chromozome, std::size_t index);
     void hillclimbBest();
-    void applyHillclimbing(chromozome& chromozome) const;
+    void applyHillclimbing(chromozome& chromozome, std::size_t index);
     /// this version of first improvement hillclimbing doesn't do any sorting on
     /// indices
-    bool firstImprovementHillclimbing(chromozome& chromozome) const;
+    bool
+    firstImprovementHillclimbing(chromozome& chromozome, std::size_t index);
     // TODO: add first improvement with random sorting, best improvement, worst
     // improvement (?)
 
@@ -167,7 +173,8 @@ class GeneticAlgorithm
     std::function<double(const chromozome_cit begin, const chromozome_cit end)>
         decodingStrategy;
     std::function<void()> crossoverPopulationStrategy;
-    std::function<bool(chromozome& chromozome)> hillclimbingStrategy;
+    std::function<bool(chromozome& chromozome, std::size_t)>
+        hillclimbingStrategy;
     FunctionManager function;
 };
 
