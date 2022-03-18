@@ -144,12 +144,13 @@ FunctionManager::FunctionManager(std::string&& functionName, int dimensions,
     function = initFunction(dimensions, shiftFlag, rotateFlag);
 }
 
-double FunctionManager::operator()(std::vector<double>& x) const
+double FunctionManager::operator()(std::vector<double>& x,
+                                   std::vector<double>& aux) const
 {
-    return function(x);
+    return function(x, aux);
 }
 
-std::function<double(std::vector<double>&)>
+std::function<double(std::vector<double>&, std::vector<double>&)>
 FunctionManager::initFunction(int dimensions, bool shiftFlag, bool rotateFlag)
 {
     using namespace std::string_literals;
@@ -158,11 +159,13 @@ FunctionManager::initFunction(int dimensions, bool shiftFlag, bool rotateFlag)
         std::string,
         std::tuple<int,
                    std::function<double(
-                       std::vector<double>&, const std::vector<double>&,
+                       std::vector<double>&, std::vector<double>&,
+                       const std::vector<double>&,
                        const std::vector<std::vector<double>>&, bool, bool)>,
                    double>>
         basicFunctions = {
-            // TODO: find what 300.0 and the likes are and if we even need to add them
+            // TODO: find what 300.0 and the likes are and if we even need to
+            // add them
             {"zakharov_func"s, {1, zakharov_func, 300.0}},
             {"rosenbrock_func"s, {2, rosenbrock_func, 400.0}},
             {"schaffer_F7_func"s, {3, schaffer_F7_func, 600.0}},
@@ -171,12 +174,13 @@ FunctionManager::initFunction(int dimensions, bool shiftFlag, bool rotateFlag)
         };
     const std::unordered_map<
         std::string,
-        std::tuple<int,
-                   std::function<double(
-                       std::vector<double>&, const std::vector<double>&,
-                       const std::vector<std::vector<double>>&,
-                       const std::vector<std::size_t>&, bool, bool)>,
-                   double>>
+        std::tuple<
+            int,
+            std::function<double(std::vector<double>&, std::vector<double>&,
+                                 const std::vector<double>&,
+                                 const std::vector<std::vector<double>>&,
+                                 const std::vector<std::size_t>&, bool, bool)>,
+            double>>
         hybridFunctions = {
             {"hf01"s, {6, hf01, 1800.0}},
             {"hf02"s, {7, hf02, 2000.0}},
@@ -186,7 +190,8 @@ FunctionManager::initFunction(int dimensions, bool shiftFlag, bool rotateFlag)
         std::string,
         std::tuple<int,
                    std::function<double(
-                       std::vector<double>&, const std::vector<double>&,
+                       std::vector<double>&, std::vector<double>&,
+                       const std::vector<double>&,
                        const std::vector<std::vector<double>>&, bool)>,
                    double, int>>
         compositionFunctions = {
@@ -201,8 +206,8 @@ FunctionManager::initFunction(int dimensions, bool shiftFlag, bool rotateFlag)
         return [=, f = std::move(f),
                 shift = readShift(dimensions, index, shiftFlag),
                 rotate = readRotate(dimensions, dimensions, index, rotateFlag)](
-                   std::vector<double>& x) {
-            return f(x, shift, rotate, shiftFlag, rotateFlag) + fStar;
+                   std::vector<double>& x, std::vector<double>& aux) {
+            return f(x, aux, shift, rotate, shiftFlag, rotateFlag) + fStar;
         };
     }
 
@@ -211,9 +216,10 @@ FunctionManager::initFunction(int dimensions, bool shiftFlag, bool rotateFlag)
         return [=, f = std::move(f),
                 shift = readShift(dimensions, index, shiftFlag),
                 rotate = readRotate(dimensions, dimensions, index, rotateFlag),
-                indices =
-                    readShuffle(dimensions, index)](std::vector<double>& x) {
-            return f(x, shift, rotate, indices, shiftFlag, rotateFlag) + fStar;
+                indices = readShuffle(dimensions, index)](
+                   std::vector<double>& x, std::vector<double>& aux) {
+            return f(x, aux, shift, rotate, indices, shiftFlag, rotateFlag) +
+                   fStar;
         };
     }
 
@@ -222,8 +228,8 @@ FunctionManager::initFunction(int dimensions, bool shiftFlag, bool rotateFlag)
         return [=, f = std::move(f),
                 shift = readShift(dimensions * n, index, true),
                 rotate = readRotate(dimensions, dimensions * n, index, true)](
-                   std::vector<double>& x) {
-            return f(x, shift, rotate, true) + fStar; // always rotate
+                   std::vector<double>& x, std::vector<double>& aux) {
+            return f(x, aux, shift, rotate, true) + fStar; // always rotate
         };
     }
 

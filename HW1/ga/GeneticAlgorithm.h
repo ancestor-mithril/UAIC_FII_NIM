@@ -28,7 +28,7 @@ enum class HillclimbingType
 class GeneticAlgorithm
 {
   public:
-  // TODO: Change clang format to one parameter per line
+    // TODO: Change clang format to one parameter per line
     GeneticAlgorithm(double crossoverProbability, double mutationProbability,
                      double hypermutationRate, double elitesPercentage,
                      double selectionPressure, double encodingChangeRate,
@@ -102,7 +102,8 @@ class GeneticAlgorithm
     /// this version of first improvement hillclimbing doesn't do any sorting on
     /// indices
     bool firstImprovementHillclimbing(chromozome& chromozome) const;
-    // TODO: add first improvement with random sorting, best improvement, worst improvement (?)
+    // TODO: add first improvement with random sorting, best improvement, worst
+    // improvement (?)
 
     /// Adaptation of hyperparameters depending on various factors
     void adapt();
@@ -153,6 +154,8 @@ class GeneticAlgorithm
     std::vector<chromozome> population;
     std::vector<chromozome> newPopulation;
     std::vector<std::vector<double>> decodings;
+    // used to optimize rotate operation
+    std::vector<std::vector<double>> auxiliars;
     std::vector<double> fitnesses;
     std::vector<double> selectionProbabilities;
     std::vector<std::size_t> indices; // [0, ..populationSize)

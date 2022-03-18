@@ -41,7 +41,7 @@ GeneticAlgorithm getDefault(std::string&& functionName)
             cst::populationSize,                // populationSize
             10,                                 // dimensions
             10,                                 // stepsToHypermutation
-            1000,                                // maxNoImprovementSteps
+            1000,                               // maxNoImprovementSteps
             std::move(functionName),
             true,  // applyShift
             true}; // applyRotation
@@ -85,7 +85,8 @@ void GeneticAlgorithm::sanityCheck()
     std::cout << "GeneticAlgorithm::sanityCheck" << '\n';
     std::cout << evaluateChromozome(0) << '\n';
     std::vector<double> ourCheck(dimensions, 0.0);
-    std::cout << function(ourCheck);
+    std::vector<double> aux(dimensions, 0.0);
+    std::cout << function(ourCheck, aux);
 }
 
 void GeneticAlgorithm::randomizePopulationAndInitBest()
@@ -128,14 +129,20 @@ GeneticAlgorithm::decodeChromozome(const chromozome& chromozome) const
 double GeneticAlgorithm::evaluateChromozome(const chromozome& chromozome) const
 {
     auto decoded = decodeChromozome(chromozome);
-    return function(decoded);
+    // copy used to cache result of rotate operation
+    // doesn't bring any benefit for this method, however it does for the index
+    // case
+    auto aux = decoded;
+    return function(decoded, aux);
 }
 
 double
 GeneticAlgorithm::evaluateChromozomeAndUpdateBest(const chromozome& chromozome)
 {
     auto decoded = decodeChromozome(chromozome);
-    auto ret = function(decoded);
+    auto aux = decoded;
+    // copy used to cache result of rotate operation
+    auto ret = function(decoded, aux);
     if (ret < bestValue) {
         bestValue = ret;
         bestChromozome = chromozome;
@@ -146,7 +153,7 @@ GeneticAlgorithm::evaluateChromozomeAndUpdateBest(const chromozome& chromozome)
 
 double GeneticAlgorithm::evaluateChromozome(std::size_t index)
 {
-    return function(decodeChromozome(index));
+    return function(decodeChromozome(index), auxiliars[index]);
 }
 
 double GeneticAlgorithm::evaluateChromozomeAndUpdateBest(std::size_t index)
@@ -280,7 +287,8 @@ void GeneticAlgorithm::mutateChromozome(chromozome& chromozome)
         }
     }
     // This solution would not work if using vector of char
-    // TODO: Add template specialization for bool and char for these kind of methods
+    // TODO: Add template specialization for bool and char for these kind of
+    // methods
 }
 
 void GeneticAlgorithm::crossoverPopulationChaotic()
@@ -331,7 +339,7 @@ void GeneticAlgorithm::hillclimbPopulation()
     std::for_each(
         exec::unseq, population.begin(), population.end(),
         [this](auto& chromozome) { hillclimbChromozome(chromozome); });
-        // TODO: test all execution contexts to check if there is any improvement
+    // TODO: test all execution contexts to check if there is any improvement
 }
 
 void GeneticAlgorithm::hillclimbChromozome(std::size_t index)
@@ -342,7 +350,8 @@ void GeneticAlgorithm::hillclimbChromozome(std::size_t index)
 
 void GeneticAlgorithm::hillclimbBest()
 {
-    // TODO: here we would actually need to change encoding until no possible improvement can be done
+    // TODO: here we would actually need to change encoding until no possible
+    // improvement can be done
     hillclimbChromozome(bestChromozome);
     evaluateChromozomeAndUpdateBest(bestChromozome);
 }
@@ -386,7 +395,8 @@ bool GeneticAlgorithm::firstImprovementHillclimbing(
 void GeneticAlgorithm::adapt()
 {
     // hypermutation
-    if (epoch % stepsToHypermutation == 0 or epoch % stepsToHypermutation == 1) {
+    if (epoch % stepsToHypermutation == 0 or
+        epoch % stepsToHypermutation == 1) {
         std::swap(hypermutationRate, mutationProbability);
     }
 
@@ -464,6 +474,7 @@ void GeneticAlgorithm::initContainers()
         // population will be randomized at each run call
         newPopulation.push_back(chromozome(bitsPerChromozome, true));
         decodings.push_back(std::vector<double>(dimensions, 0.0));
+        auxiliars.push_back(std::vector<double>(dimensions, 0.0));
     }
 
     fitnesses.resize(populationSize);
