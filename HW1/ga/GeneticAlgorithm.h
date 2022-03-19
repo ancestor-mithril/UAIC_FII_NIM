@@ -31,12 +31,12 @@ class GeneticAlgorithm
     // TODO: Change clang format to one parameter per line
     GeneticAlgorithm(double crossoverProbability, double mutationProbability,
                      double hypermutationRate, double elitesPercentage,
-                     double selectionPressure, double encodingChangeRate,
-                     CrossoverType crossoverType,
+                     double selectionPressure, CrossoverType crossoverType,
                      HillclimbingType hillclimbingType, int populationSize,
                      int dimensions, int stepsToHypermutation,
-                     int maxNoImprovementSteps, std::string&& functionName,
-                     bool applyShift, bool applyRotation);
+                     int encodingChangeRate, int maxNoImprovementSteps,
+                     std::string&& functionName, bool applyShift,
+                     bool applyRotation);
     void sanityCheck();
     void run();
     void printBest() const; // TODO: also add stream to print to
@@ -52,6 +52,19 @@ class GeneticAlgorithm
     decodeChromozome(const chromozome& chromozome, std::size_t index);
     /// Decoding version for chromozome which creates new vector
     std::vector<double> decodeChromozome(const chromozome& chromozome) const;
+
+    /// decodes one dimension from the chromozome, given by bounds
+    double
+    decodeDimension(const chromozome_cit begin, const chromozome_cit end) const;
+
+    /// convert from one encoding to another using an auxiliar
+    void binaryToGray(chromozome& binary, chromozome& gray);
+    void grayToBinary(chromozome& gray, chromozome& binary);
+    /// convert from one encoding to another without an auxiliar
+    void binaryToGray(chromozome& binary);
+    void grayToBinary(chromozome& gray);
+    void binaryToGreyPopulation();
+    void grayToBinaryPopulation();
 
     /// evaluating chromozomes outside of population
     /// uses decodeChromozome 2nd overload
@@ -81,7 +94,7 @@ class GeneticAlgorithm
     /// copies in newPopulation selected chromozomes, then swaps vectors
     void selectNewPopulation();
 
-    /// evaluates population and slects new population
+    /// evaluates and selects the next generation
     void evaluateAndSelect();
 
     bool stop() const;
@@ -129,35 +142,6 @@ class GeneticAlgorithm
     void printChromozomeRepr(const chromozome& chromozome) const;
     void printPopulation() const;
 
-    std::random_device seed;
-    std::mt19937_64 gen{seed()};
-    std::bernoulli_distribution randomBool;
-    std::uniform_real_distribution<double> randomDouble{0.0, 1.0};
-    std::uniform_int_distribution<> radomChromozome; // initialized in ctor
-    std::uniform_int_distribution<> randomSlice;     // initialized in ctor
-
-    // TODO: find good values
-    // TODO: use const where we should use const
-    double crossoverProbability;
-    double mutationProbability;
-    double hypermutationRate;
-    const double elitesPercentage;
-    const double selectionPressure;
-    double encodingChangeRate;
-
-    const int maxSteps;
-    const int populationSize;    // TODO: make template Size
-    const int dimensions;        // TODO: use constexpr
-    const int bitsPerChromozome; // TODO: make template bitsPerChromozome
-    const int stepsToHypermutation;
-    const int maxNoImprovementSteps;
-    const int elitesNumber;
-
-    int epoch = 0;
-    int lastImprovement = 0;
-    double bestValue;
-    chromozome bestChromozome;
-
     // TODO: test against char, might be faster because std::vector<double> is
     // space efficient but not time efficient
     std::vector<chromozome> population;
@@ -172,12 +156,43 @@ class GeneticAlgorithm
     // selectionProbabilities.size() == population, it might be an idea to use
     // std array
 
+    chromozome bestChromozome;
+    double bestValue;
+
+    // TODO: find good values
+    // TODO: use const where we should use const
+    double crossoverProbability;
+    double mutationProbability;
+    double hypermutationRate;
+    const double elitesPercentage;
+    const double selectionPressure;
+
+    const int maxSteps;
+    const int populationSize;    // TODO: make template Size
+    const int dimensions;        // TODO: use constexpr
+    const int bitsPerChromozome; // TODO: make template bitsPerChromozome
+    const int stepsToHypermutation;
+    const int encodingChangeRate;
+    const int maxNoImprovementSteps;
+    const int elitesNumber;
+
+    int epoch = 0;
+    int lastImprovement = 0;
+
+    bool isBinary = true;
+
+    std::random_device seed;
+    std::mt19937_64 gen{seed()};
+    std::bernoulli_distribution randomBool;
+    std::uniform_real_distribution<double> randomDouble{0.0, 1.0};
+    std::uniform_int_distribution<> radomChromozome; // initialized in ctor
+    std::uniform_int_distribution<> randomSlice;     // initialized in ctor
+
     /// applies decoding within bounds
-    std::function<double(const chromozome_cit begin, const chromozome_cit end)>
+    std::function<long long(const chromozome_cit, const chromozome_cit)>
         decodingStrategy;
     std::function<void()> crossoverPopulationStrategy;
-    std::function<bool(chromozome& chromozome, std::size_t)>
-        hillclimbingStrategy;
+    std::function<bool(chromozome&, std::size_t)> hillclimbingStrategy;
     FunctionManager function;
 };
 

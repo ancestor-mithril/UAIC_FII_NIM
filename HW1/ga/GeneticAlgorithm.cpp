@@ -1,6 +1,7 @@
 #include "GeneticAlgorithm.h"
 #include "Constants.h"
 
+#include <bitset>
 #include <cmath>
 #include <execution>
 #include <fstream>
@@ -15,14 +16,24 @@ namespace ga {
 
 namespace {
 
-double
+long long
 decodeBinaryVariable(const chromozome_cit begin, const chromozome_cit end)
 {
-    // Nice, except the formatting
     return std::accumulate(begin, end, 0LL,
-                           [](auto f, auto elem) { return f * 2 + elem; }) /
-               (cst::discriminator) * (cst::maximum - cst::minimum) +
-           cst::minimum;
+                           [](auto f, auto elem) { return f * 2 + elem; });
+}
+
+long long
+decodeGrayVariable(const chromozome_cit begin, const chromozome_cit end)
+{
+    auto prev = *begin;
+    auto f = 0LL + prev;
+    for (auto it = std::next(begin); it != end; ++it) {
+        const auto temp = (*it ? not prev : prev);
+        f = f * 2 + temp;
+        prev = temp;
+    }
+    return f;
 }
 
 } // namespace
@@ -30,17 +41,17 @@ decodeBinaryVariable(const chromozome_cit begin, const chromozome_cit end)
 GeneticAlgorithm getDefault(std::string&& functionName)
 {
     // TODO: Make tests
-    return {0.7,  // crossoverProbability
-            0.001, // mutationProbability
-            0.01,  // hypermutationRate
-            0.04, // elitesPercentage
-            10.0,   // selectionPressure
-            0.1,                                // encodingChangeRate
+    return {0.7,                                // crossoverProbability
+            0.001,                              // mutationProbability
+            0.01,                               // hypermutationRate
+            0.04,                               // elitesPercentage
+            10.0,                               // selectionPressure
             CrossoverType::Classic,             // crossoverType
             HillclimbingType::FirstImprovement, // hillclimbingType
             cst::populationSize,                // populationSize
             10,                                 // dimensions
             10,                                 // stepsToHypermutation
+            20,                                  // encodingChangeRate
             2000,                               // maxNoImprovementSteps
             std::move(functionName),
             false,  // applyShift
@@ -50,9 +61,9 @@ GeneticAlgorithm getDefault(std::string&& functionName)
 GeneticAlgorithm::GeneticAlgorithm(
     double crossoverProbability, double mutationProbability,
     double hypermutationRate, double elitesPercentage, double selectionPressure,
-    double encodingChangeRate, CrossoverType crossoverType,
-    HillclimbingType hillclimbingType, int populationSize, int dimensions,
-    int stepsToHypermutation, int maxNoImprovementSteps,
+    CrossoverType crossoverType, HillclimbingType hillclimbingType,
+    int populationSize, int dimensions, int stepsToHypermutation,
+    int encodingChangeRate, int maxNoImprovementSteps,
     std::string&& functionName, bool applyShift, bool applyRotation)
     // clang-format off
     : crossoverProbability{crossoverProbability}
@@ -60,12 +71,12 @@ GeneticAlgorithm::GeneticAlgorithm(
     , hypermutationRate{hypermutationRate}
     , elitesPercentage{elitesPercentage}
     , selectionPressure{selectionPressure}
-    , encodingChangeRate{encodingChangeRate}
     , maxSteps{dimensions == 10 ? 200'000 : 1'000'000}
     , populationSize{populationSize}
     , dimensions{dimensions}
     , bitsPerChromozome{dimensions * cst::bitsPerVariable}
     , stepsToHypermutation{stepsToHypermutation}
+    , encodingChangeRate{encodingChangeRate}
     , maxNoImprovementSteps{maxNoImprovementSteps}
     , elitesNumber{static_cast<int>(elitesPercentage * populationSize)}
     , function{std::move(functionName), dimensions, applyShift, applyRotation}
@@ -83,7 +94,24 @@ GeneticAlgorithm::GeneticAlgorithm(
 void GeneticAlgorithm::sanityCheck()
 {
     std::cout << "GeneticAlgorithm::sanityCheck" << '\n';
-    std::cout << evaluateChromozome(0) << '\n';
+    population[0][2] = 0;
+    population[0][3] = 1;
+    auto firstVal = evaluateChromozome(0);
+    std::cout << firstVal << '\n';
+    binaryToGray(population[0], newPopulation[0]);
+
+    decodingStrategy = decodeGrayVariable;
+    auto secondVal = evaluateChromozome(0);
+    if (secondVal != firstVal) {
+        throw std::runtime_error{"Gray code conversion is not equivalent"};
+    }
+
+    grayToBinary(population[0], newPopulation[0]);
+    decodingStrategy = decodeBinaryVariable;
+    if (firstVal != evaluateChromozome(0)) {
+        throw std::runtime_error{"Binary to gray not working"};
+    }
+
     std::vector<double> ourCheck(dimensions, 0.0);
     std::vector<double> aux(dimensions, 0.0);
     std::cout << function(ourCheck, aux);
@@ -112,7 +140,7 @@ GeneticAlgorithm::decodeChromozome(const chromozome& chromozome,
     auto it = chromozome.cbegin();
     for (auto i = 0; i < dimensions; ++i) {
         const auto end = std::next(it, cst::bitsPerVariable);
-        decodings[index][i] = decodingStrategy(it, end);
+        decodings[index][i] = decodeDimension(it, end);
         it = end;
     }
     // TODO: Refactor to use std algorithm
@@ -127,10 +155,78 @@ GeneticAlgorithm::decodeChromozome(const chromozome& chromozome) const
     auto it = chromozome.cbegin();
     for (auto i = 0; i < dimensions; ++i) {
         const auto end = std::next(it, cst::bitsPerVariable);
-        x.push_back(decodingStrategy(it, end));
+        x.push_back(decodeDimension(it, end));
         it = end;
     }
     return x;
+}
+
+double GeneticAlgorithm::decodeDimension(const chromozome_cit begin,
+                                         const chromozome_cit end) const
+{
+    return decodingStrategy(begin, end) / cst::discriminator *
+               (cst::maximum - cst::minimum) +
+           cst::minimum;
+}
+
+void GeneticAlgorithm::binaryToGray(chromozome& binary, chromozome& gray)
+{
+    for (auto i = 0; i < dimensions; ++i) {
+        const auto begin = i * cst::bitsPerVariable;
+        const auto end = begin + cst::bitsPerVariable;
+
+        gray[begin] = binary[begin];
+        for (auto j = begin + 1; j < end; ++j) {
+            gray[j] = (binary[j - 1] != binary[j]); // xor
+        }
+    }
+    std::swap(binary, gray);
+}
+
+void GeneticAlgorithm::binaryToGray(chromozome& binary)
+{
+    // TODO: Replace
+    chromozome gray{binary};
+    binaryToGray(binary, gray);
+}
+
+void GeneticAlgorithm::grayToBinary(chromozome& gray, chromozome& binary)
+{
+    for (auto i = 0; i < dimensions; ++i) {
+        const auto begin = i * cst::bitsPerVariable;
+        const auto end = begin + cst::bitsPerVariable;
+
+        binary[begin] = gray[begin];
+        for (auto j = begin + 1; j < end; ++j) {
+            binary[j] = gray[j] ? not binary[j - 1] : binary[j - 1];
+        }
+    }
+    std::swap(binary, gray);
+}
+
+void GeneticAlgorithm::grayToBinary(chromozome& gray)
+{
+    // TODO: Replace
+    chromozome binary{gray};
+    grayToBinary(gray, binary);
+}
+
+void GeneticAlgorithm::binaryToGreyPopulation()
+{
+    // Test
+    std::for_each(exec::unseq, indices.begin(), indices.end(),
+                  [this](auto index) {
+                      binaryToGray(population[index], newPopulation[index]);
+                  });
+}
+
+void GeneticAlgorithm::grayToBinaryPopulation()
+{
+    // Test
+    std::for_each(exec::unseq, indices.begin(), indices.end(),
+                  [this](auto index) {
+                      grayToBinary(population[index], newPopulation[index]);
+                  });
 }
 
 double GeneticAlgorithm::evaluateChromozome(const chromozome& chromozome) const
@@ -153,6 +249,9 @@ GeneticAlgorithm::evaluateChromozomeAndUpdateBest(const chromozome& chromozome)
     if (ret < bestValue) {
         bestValue = ret;
         bestChromozome = chromozome;
+        if (not isBinary) {
+            grayToBinary(bestChromozome);
+        }
         lastImprovement = epoch;
     }
     return ret;
@@ -176,6 +275,9 @@ double GeneticAlgorithm::evaluateChromozomeAndUpdateBest(std::size_t index)
     if (ret < bestValue) {
         bestValue = ret;
         bestChromozome = population[index];
+        if (not isBinary) {
+            grayToBinary(bestChromozome, newPopulation[index]);
+        }
         lastImprovement = epoch;
     }
     return ret;
@@ -395,10 +497,36 @@ void GeneticAlgorithm::hillclimbChromozome(std::size_t index)
 
 void GeneticAlgorithm::hillclimbBest()
 {
-    // TODO: here we would actually need to change encoding until no possible
-    // improvement can be done
-    hillclimbChromozome(bestChromozome, 0); // using 1st index because its free
-    evaluateChromozomeAndUpdateBest(bestChromozome);
+    auto previousBest = bestValue;
+    isBinary = true;
+    decodingStrategy = decodeBinaryVariable;
+    // default encoding and values for current best
+
+    auto isFirst = true;
+
+    while (true) {
+        if (isBinary) {
+            decodingStrategy = decodeGrayVariable;
+            binaryToGray(bestChromozome, newPopulation[0]);
+        } else {
+            decodingStrategy = decodeBinaryVariable;
+            grayToBinary(bestChromozome, newPopulation[0]);
+        }
+        isBinary = not isBinary;
+
+        hillclimbChromozome(bestChromozome, 0); // using 1st index because its free
+        evaluateChromozomeAndUpdateBest(bestChromozome);
+        if (bestValue == previousBest) {
+            if (not isFirst) {
+                break;
+            }
+        }
+
+        std::cout << "Best improvement " << (previousBest - bestValue) << '\n';
+        previousBest = bestValue;
+        isFirst = false;
+    }
+    
 }
 
 void GeneticAlgorithm::hillclimbChromozome(chromozome& chromozome,
@@ -443,8 +571,17 @@ void GeneticAlgorithm::adapt()
         std::swap(hypermutationRate, mutationProbability);
     }
 
-    // TODO: add encoding change
     // changing encodings is good to go over hamming walls
+    if (epoch % encodingChangeRate == 0) {
+        if (isBinary) {
+            decodingStrategy = decodeGrayVariable;
+            binaryToGreyPopulation();
+        } else {
+            decodingStrategy = decodeBinaryVariable;
+            grayToBinaryPopulation();
+        }
+        isBinary = not isBinary;
+    }
 }
 
 void GeneticAlgorithm::printBest() const
