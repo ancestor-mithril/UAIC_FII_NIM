@@ -9,9 +9,6 @@ project(
 set(OPT Ofast)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-if (CMAKE_BUILD_TYPE STREQUAL "Release")
-    set(OE_BUILD_TYPE_DEFINE "OE_RELEASE")
-endif()
 add_compile_options(-std=c++20 
                     # -fmodules-ts
                     -Wall 

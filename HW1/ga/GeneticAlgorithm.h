@@ -77,8 +77,8 @@ class GeneticAlgorithm
     double evaluateChromozome(const chromozome& chromozome, std::size_t index);
     double evaluateChromozomeAndUpdateBest(std::size_t index);
 
-    void updateBestChromozome(int newValue, const chromozome& newBest);
-    void updateBestChromozome(int newValue, std::size_t index);
+    void updateBestChromozome(double newValue, const chromozome& newBest);
+    void updateBestChromozome(double newValue, std::size_t index);
 
     /// this has to be done sequentially
     void evaluatePopulation();

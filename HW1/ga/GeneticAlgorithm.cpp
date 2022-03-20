@@ -88,7 +88,8 @@ GeneticAlgorithm::GeneticAlgorithm(
     initContainers();
     initStrategies(crossoverType, hillclimbingType);
     initDistributions(populationSize);
-    // TODO: Ofast might break some wrong assuptions about concurrency if done wrong
+    // TODO: Ofast might break some wrong assuptions about concurrency if done
+    // wrong
 }
 
 void GeneticAlgorithm::sanityCheck()
@@ -273,7 +274,7 @@ double GeneticAlgorithm::evaluateChromozomeAndUpdateBest(std::size_t index)
     return ret;
 }
 
-void GeneticAlgorithm::updateBestChromozome(int newValue, std::size_t index)
+void GeneticAlgorithm::updateBestChromozome(double newValue, std::size_t index)
 {
     bestValue = newValue;
     bestChromozome = population[index];
@@ -283,7 +284,7 @@ void GeneticAlgorithm::updateBestChromozome(int newValue, std::size_t index)
     lastImprovement = epoch;
 }
 
-void GeneticAlgorithm::updateBestChromozome(int newValue,
+void GeneticAlgorithm::updateBestChromozome(double newValue,
                                             const chromozome& newBest)
 {
     bestValue = newValue;
@@ -520,20 +521,29 @@ void GeneticAlgorithm::hillclimbBest()
     // default encoding and values for current best
 
     auto isFirst = true;
+    auto& best = bestChromozome;
 
     while (true) {
         if (isBinary) {
             decodingStrategy = decodeGrayVariable;
-            binaryToGray(bestChromozome, newPopulation[0]);
+            binaryToGray(best, newPopulation[0]);
         } else {
             decodingStrategy = decodeBinaryVariable;
-            grayToBinary(bestChromozome, newPopulation[0]);
+            grayToBinary(best, newPopulation[0]);
         }
         isBinary = not isBinary;
 
-        hillclimbChromozome(bestChromozome,
-                            0); // using 1st index because its free
-        evaluateChromozomeAndUpdateBest(bestChromozome);
+        // using 1st index because its free
+        hillclimbChromozome(best, 0);
+
+        auto decoded = decodeChromozome(best);
+        auto aux = decoded;
+        // copy used to cache result of rotate operation
+        auto ret = function(decoded, aux);
+        if (ret < bestValue) {
+            bestValue = ret;
+        }
+
         if (bestValue == previousBest and not isFirst) {
             break;
         }
