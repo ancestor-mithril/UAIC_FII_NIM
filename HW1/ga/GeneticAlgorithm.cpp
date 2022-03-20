@@ -40,18 +40,18 @@ decodeGrayVariable(const chromozome_cit begin, const chromozome_cit end)
 GeneticAlgorithm getDefault(std::string&& functionName)
 {
     // TODO: Make tests
-    return {0.7,                                // crossoverProbability
-            0.001,                              // mutationProbability
-            0.01,                               // hypermutationRate
-            0.04,                               // elitesPercentage
-            10.0,                               // selectionPressure
-            CrossoverType::Classic,             // crossoverType
-            HillclimbingType::FirstImprovement, // hillclimbingType
-            cst::populationSize,                // populationSize
-            10,                                 // dimensions
-            10,                                 // stepsToHypermutation
-            20,                                 // encodingChangeRate
-            2000,                               // maxNoImprovementSteps
+    return {0.7,                               // crossoverProbability
+            0.001,                             // mutationProbability
+            0.01,                              // hypermutationRate
+            0.04,                              // elitesPercentage
+            10.0,                              // selectionPressure
+            CrossoverType::Classic,            // crossoverType
+            HillclimbingType::BestImprovement, // hillclimbingType
+            cst::populationSize,               // populationSize
+            10,                                // dimensions
+            10,                                // stepsToHypermutation
+            20,                                // encodingChangeRate
+            2000,                              // maxNoImprovementSteps
             std::move(functionName),
             false,  // applyShift
             false}; // applyRotation
@@ -171,6 +171,11 @@ double GeneticAlgorithm::decodeDimension(const chromozome_cit begin,
 
 void GeneticAlgorithm::binaryToGray(chromozome& binary, chromozome& gray)
 {
+    // test this against the method bellow
+
+    // this has the advantage of doing std::vector::swap (3 * std::move), and
+    // only once, while the one bellow uses swap_ranges which actually iterates
+    // trough given range dimensions time, therefore O(chromozome.size())
     for (auto i = 0; i < dimensions; ++i) {
         const auto begin = i * cst::bitsPerVariable;
         const auto end = begin + cst::bitsPerVariable;
@@ -185,7 +190,6 @@ void GeneticAlgorithm::binaryToGray(chromozome& binary, chromozome& gray)
 
 void GeneticAlgorithm::binaryToGray(chromozome& binary)
 {
-    // might be more efficient than previous
     std::array<gene, cst::bitsPerVariable> aux;
     for (auto i = 0; i < dimensions; ++i) {
         const auto begin = i * cst::bitsPerVariable;
@@ -197,6 +201,7 @@ void GeneticAlgorithm::binaryToGray(chromozome& binary)
         }
         std::swap_ranges(aux.begin(), aux.end(), binary.begin() + begin);
     }
+    // doesn't seem to be used
 }
 
 void GeneticAlgorithm::grayToBinary(chromozome& gray, chromozome& binary)
@@ -215,7 +220,6 @@ void GeneticAlgorithm::grayToBinary(chromozome& gray, chromozome& binary)
 
 void GeneticAlgorithm::grayToBinary(chromozome& gray)
 {
-    // might be more efficient than previous
     std::array<gene, cst::bitsPerVariable> aux;
     for (auto i = 0; i < dimensions; ++i) {
         const auto begin = i * cst::bitsPerVariable;
@@ -481,6 +485,7 @@ void GeneticAlgorithm::crossoverPopulationSorted()
         selectionProbabilities.begin(), selectionProbabilities.end(),
         selectionProbabilities.begin(),
         [this]([[maybe_unused]] auto elem) { return randomDouble(gen); });
+
     // sorting by p
     std::sort(indices.begin(), indices.end(), [this](auto a, auto b) {
         return selectionProbabilities[a] < selectionProbabilities[b];
@@ -503,7 +508,7 @@ void GeneticAlgorithm::crossoverChromozomes(std::size_t i, std::size_t j)
     // for example xor and or nor
     // Try to add crossover strategies and use them
 
-    const auto slicePosition = randomSlice(gen);
+    const auto slicePosition = randomBitIndex(gen);
     for (auto k = 0; k < slicePosition; ++k) {
         population[i].swap(population[i][k], population[j][k]);
     }
@@ -512,7 +517,7 @@ void GeneticAlgorithm::crossoverChromozomes(std::size_t i, std::size_t j)
     // Swap version for vector of char, might not work for bool because
     // iterator is not LegacyForwardIterator
     //
-    // const auto end = std::next(population[i].begin(), randomSlice(gen));
+    // const auto end = std::next(population[i].begin(), randomBitIndex(gen));
     // std::swap_ranges(population[i].begin(), end, population[j].begin());
     //
     // this can and might be worth vectorizing for char, because char has
@@ -592,7 +597,7 @@ void GeneticAlgorithm::applyHillclimbing(chromozome& chromozome,
 bool GeneticAlgorithm::firstImprovementHillclimbing(chromozome& chromozome,
                                                     std::size_t index)
 {
-    auto bestValue = evaluateChromozome(chromozome, index);
+    const auto bestValue = evaluateChromozome(chromozome, index);
 
     // this is a std::_Bit_iterator::reference
     for (auto bit : chromozome) {
@@ -605,6 +610,55 @@ bool GeneticAlgorithm::firstImprovementHillclimbing(chromozome& chromozome,
         bit.flip();
     }
     return false; // no improvement could be done
+}
+
+bool GeneticAlgorithm::firstImprovementRandomHillclimbing(
+    chromozome& chromozome, std::size_t index)
+{
+    // cannot use member indices to sort them because of concurrency issues
+    const auto bestValue = evaluateChromozome(chromozome, index);
+
+    // should we do more or less tries?
+    for (std::size_t tries = 0; tries < chromozome.size(); ++tries) {
+        const auto i = randomBitIndex(gen);
+        chromozome[i].flip();
+
+        const auto value = evaluateChromozome(chromozome, index);
+        if (value < bestValue) {
+            return true;
+            // returning before flipping back
+        }
+        chromozome[i].flip();
+    }
+    return false;
+}
+
+bool GeneticAlgorithm::bestImprovementHillclimbing(chromozome& chromozome,
+                                                   std::size_t index)
+{
+    // cannot use member indices because of concurrency issues
+    auto bestValue = evaluateChromozome(chromozome, index);
+    auto bestIndex = 0;
+    auto updated = false;
+
+    for (std::size_t i = 0; i < chromozome.size(); ++i) {
+        chromozome[i].flip();
+
+        const auto value = evaluateChromozome(chromozome, index);
+        if (value < bestValue) {
+            updated = true;
+            bestIndex = i;
+            bestValue = value;
+        }
+
+        chromozome[i].flip();
+    }
+
+    if (not updated) {
+        return false;
+    }
+    chromozome[bestIndex].flip();
+    return true;
 }
 
 void GeneticAlgorithm::adapt()
@@ -735,6 +789,16 @@ void GeneticAlgorithm::initStrategies(CrossoverType crossoverType,
                 return firstImprovementHillclimbing(chromozome, index);
             };
         }
+        if (hillclimbingType == HillclimbingType::FirstImprovementRandom) {
+            return [this](chromozome& chromozome, std::size_t index) {
+                return firstImprovementRandomHillclimbing(chromozome, index);
+            };
+        }
+        if (hillclimbingType == HillclimbingType::BestImprovement) {
+            return [this](chromozome& chromozome, std::size_t index) {
+                return bestImprovementHillclimbing(chromozome, index);
+            };
+        }
         throw std::runtime_error{"Implement the others"};
     }();
 }
@@ -742,7 +806,7 @@ void GeneticAlgorithm::initStrategies(CrossoverType crossoverType,
 void GeneticAlgorithm::initDistributions(int populationSize)
 {
     radomChromozome = std::uniform_int_distribution<>{0, populationSize - 1};
-    randomSlice = std::uniform_int_distribution<>{0, bitsPerChromozome - 1};
+    randomBitIndex = std::uniform_int_distribution<>{0, bitsPerChromozome - 1};
 }
 
 } // namespace ga

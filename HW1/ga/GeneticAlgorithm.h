@@ -22,7 +22,7 @@ enum class HillclimbingType
 {
     BestImprovement,
     FirstImprovement,
-    // TODO: add the others
+    FirstImprovementRandom,
 };
 
 // TODO: Maybe use template for population size
@@ -124,12 +124,11 @@ class GeneticAlgorithm
     void hillclimbChromozome(chromozome& chromozome, std::size_t index);
     void hillclimbBest();
     void applyHillclimbing(chromozome& chromozome, std::size_t index);
-    /// this version of first improvement hillclimbing doesn't do any sorting on
-    /// indices
     bool
     firstImprovementHillclimbing(chromozome& chromozome, std::size_t index);
-    // TODO: add first improvement with random sorting, best improvement, worst
-    // improvement (?)
+    bool firstImprovementRandomHillclimbing(chromozome& chromozome,
+                                            std::size_t index);
+    bool bestImprovementHillclimbing(chromozome& chromozome, std::size_t index);
 
     /// Adaptation of hyperparameters depending on various factors
     void adapt();
@@ -190,7 +189,7 @@ class GeneticAlgorithm
     std::bernoulli_distribution randomBool;
     std::uniform_real_distribution<double> randomDouble{0.0, 1.0};
     std::uniform_int_distribution<> radomChromozome; // initialized in ctor
-    std::uniform_int_distribution<> randomSlice;     // initialized in ctor
+    std::uniform_int_distribution<> randomBitIndex;  // initialized in ctor
 
     /// applies decoding within bounds
     std::function<long long(const chromozome_cit, const chromozome_cit)>
