@@ -137,8 +137,7 @@ double bent_cigar_func(std::vector<double>& x, std::vector<double>& aux,
                            [](auto f, auto elem) {
                                return f + elem * elem * 1000000.0;
                            }); // 1000000.0 = std::pow(10.0, 6.0)
-    // TODO: std::move(f) vs f, which is better?
-    // accumulate vs reduce
+    // TODO: accumulate vs reduce
 }
 
 double discus_func(std::vector<double>& x, std::vector<double>& aux,
@@ -223,9 +222,9 @@ double grie_rosen_func(std::vector<double>& x, std::vector<double>& aux,
         const auto temp = 100.0 * temp1 * temp1 + temp2 * temp2;
         f += (temp * temp) / 4000.0 - std::cos(temp) + 1.0;
     }
-    // TODO: last
-    const auto temp1 = x[x.size() - 1] * x[x.size() - 1] - x[0];
-    const auto temp2 = x[x.size() - 1] - 1.0;
+    const auto last = *std::prev(x.end());
+    const auto temp1 = last * last - x[0];
+    const auto temp2 = last - 1.0;
     const auto temp = 100.0 * temp1 * temp1 + temp2 * temp2;
     f += (temp * temp) / 4000.0 - std::cos(temp) + 1.0;
     return f;
@@ -244,7 +243,6 @@ double happycat_func(std::vector<double>& x, std::vector<double>& aux,
         const auto aux = elem - 1.0;
         sum_y += aux;
         r2 += aux * aux;
-        // TODO: TEST aux vs elem - 1.0
     });
     return std::pow(std::abs(r2 - x.size()), 2 * 1.0 / 8.0) +
            (0.5 * r2 + sum_y) / x.size() + 0.5;
@@ -279,7 +277,6 @@ double rosenbrock_func(std::vector<double>& x, std::vector<double>& aux,
     auto f = 0.0;
     // assuming x.size() is not 0
     for (std::size_t i = 0; i < x.size() - 1; ++i) {
-        // TODO: aux vs not aux
         const auto aux = x[i] + 1.0;
         const auto temp1 = aux * aux - x[i + 1] - 1.0;
         f += 100.0 * temp1 * temp1 + x[i] * x[i];
@@ -367,18 +364,20 @@ double levy_func(std::vector<double>& x, std::vector<double>& aux,
                  bool shift_flag, bool rotate_flag)
 {
     shift_rotate_transform(x, aux, shift, rotate, 1.0, shift_flag, rotate_flag);
+
     const auto w = [](auto elem) { return 1.0 + (elem - 1.0) / 4.0; };
-    const auto term1 = std::sin(PI * w(x[1])); // ???
-    // TODO: check
+
+    const auto term1 = std::sin(PI * w(x[0]));
     const auto term2 = std::accumulate(
         x.begin(), std::prev(x.end()), 0.0, [&w](auto f, auto elem) {
             const auto wi = w(elem);
             const auto temp = std::sin(PI * wi + 1.0);
             return f + (wi - 1.0) * (wi - 1.0) * (1.0 + 10.0 * temp * temp);
         });
-    const auto last = w(x[x.size() - 1]);
+    const auto last = w(*std::prev(x.end()));
     const auto temp = std::sin(2.0 * PI * last);
     const auto term3 = (last - 1.0) * (last - 1.0) * (1.0 + temp * temp);
+
     return term1 * term1 + term2 + term3;
 }
 
@@ -402,12 +401,13 @@ double katsuura_func(std::vector<double>& x, std::vector<double>& aux,
                      const std::vector<std::vector<double>>& rotate,
                      bool shift_flag, bool rotate_flag)
 {
-    // todo: get size upfront
     shift_rotate_transform(x, aux, shift, rotate, 5.0 / 100.0, shift_flag,
                            rotate_flag);
+
     auto f = 1.0;
-    const auto temp3 = std::pow(static_cast<double>(x.size()), 1.2);
-    for (std::size_t i = 0; i < x.size(); ++i) {
+    const auto size = x.size();
+    const auto temp3 = std::pow(static_cast<double>(size), 1.2);
+    for (std::size_t i = 0; i < size; ++i) {
         auto temp = 0.0;
         for (auto j = 1; j < 33; ++j) {
             const auto temp1 = std::pow(2.0, j);
@@ -416,7 +416,7 @@ double katsuura_func(std::vector<double>& x, std::vector<double>& aux,
         }
         f *= std::pow(1.0 + (i + 1) * temp, 10.0 / temp3);
     }
-    const auto temp1 = 10.0 / x.size() / x.size();
+    const auto temp1 = 10.0 / size / size;
     return f * temp1 - temp1;
 }
 

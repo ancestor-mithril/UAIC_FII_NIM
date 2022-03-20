@@ -1,7 +1,6 @@
 #include "GeneticAlgorithm.h"
 #include "Constants.h"
 
-#include <bitset>
 #include <cmath>
 #include <execution>
 #include <fstream>
@@ -51,7 +50,7 @@ GeneticAlgorithm getDefault(std::string&& functionName)
             cst::populationSize,                // populationSize
             10,                                 // dimensions
             10,                                 // stepsToHypermutation
-            20,                                  // encodingChangeRate
+            20,                                 // encodingChangeRate
             2000,                               // maxNoImprovementSteps
             std::move(functionName),
             false,  // applyShift
@@ -89,6 +88,7 @@ GeneticAlgorithm::GeneticAlgorithm(
     initContainers();
     initStrategies(crossoverType, hillclimbingType);
     initDistributions(populationSize);
+    // TODO: Ofast might break some wrong assuptions about concurrency if done wrong
 }
 
 void GeneticAlgorithm::sanityCheck()
@@ -143,7 +143,6 @@ GeneticAlgorithm::decodeChromozome(const chromozome& chromozome,
         decodings[index][i] = decodeDimension(it, end);
         it = end;
     }
-    // TODO: Refactor to use std algorithm
     return decodings[index];
 }
 
@@ -246,13 +245,9 @@ GeneticAlgorithm::evaluateChromozomeAndUpdateBest(const chromozome& chromozome)
     auto aux = decoded;
     // copy used to cache result of rotate operation
     auto ret = function(decoded, aux);
+
     if (ret < bestValue) {
-        bestValue = ret;
-        bestChromozome = chromozome;
-        if (not isBinary) {
-            grayToBinary(bestChromozome);
-        }
-        lastImprovement = epoch;
+        updateBestChromozome(ret, chromozome);
     }
     return ret;
 }
@@ -273,29 +268,46 @@ double GeneticAlgorithm::evaluateChromozomeAndUpdateBest(std::size_t index)
     // might be better to use iterator instead of index
     auto ret = evaluateChromozome(index);
     if (ret < bestValue) {
-        bestValue = ret;
-        bestChromozome = population[index];
-        if (not isBinary) {
-            grayToBinary(bestChromozome, newPopulation[index]);
-        }
-        lastImprovement = epoch;
+        updateBestChromozome(ret, index);
     }
     return ret;
 }
 
+void GeneticAlgorithm::updateBestChromozome(int newValue, std::size_t index)
+{
+    bestValue = newValue;
+    bestChromozome = population[index];
+    if (not isBinary) {
+        grayToBinary(bestChromozome, newPopulation[index]);
+    }
+    lastImprovement = epoch;
+}
+
+void GeneticAlgorithm::updateBestChromozome(int newValue,
+                                            const chromozome& newBest)
+{
+    bestValue = newValue;
+    bestChromozome = newBest;
+    if (not isBinary) {
+        grayToBinary(bestChromozome);
+    }
+    lastImprovement = epoch;
+}
+
 void GeneticAlgorithm::evaluatePopulation()
 {
-    fitnesses[0] = evaluateChromozomeAndUpdateBest(0);
+    fitnesses[0] = evaluateChromozome(0);
+    auto minIndex = 0;
     auto min = fitnesses[0];
     auto max = fitnesses[0];
 
-    // should not be parallelized because it has sided effects (setting best,
-    // min, max)
-    // TODO: do not try to update best every time
+    // TODO: Check what execution context can support these side effects
+    // (setting min, max, index)
     std::transform(std::next(indices.begin()), indices.end(),
                    std::next(fitnesses.begin()), [&](auto i) {
-                       auto value = evaluateChromozomeAndUpdateBest(i);
+                       auto value = evaluateChromozome(i);
                        if (value < min) {
+                           minIndex = i;
                            min = value;
                        }
                        if (value > max) {
@@ -304,12 +316,16 @@ void GeneticAlgorithm::evaluatePopulation()
                        return value;
                    });
 
+    // update best
+    if (min < bestValue) {
+        updateBestChromozome(min, minIndex);
+    }
+
     computeSelectionProbabilities(normalizeFitness(min, max));
 }
 
 void GeneticAlgorithm::updateBestFromPopulation()
 {
-    // TODO: just evaluate all and do update only with the best
     std::for_each(indices.begin(), indices.end(),
                   [&](auto i) { evaluateChromozomeAndUpdateBest(i); });
 }
@@ -318,11 +334,12 @@ double GeneticAlgorithm::normalizeFitness(double min, double max)
 {
     constexpr auto epsilon = 0.00001;
     auto total = 0.0;
+    // Execution context ?
     std::for_each(indices.begin(), indices.end(), [&](auto i) {
         fitnesses[i] =
             std::pow((max - fitnesses[i]) / (max - min + epsilon) + 1,
                      selectionPressure);
-        total += fitnesses[i];
+        total += fitnesses[i]; // read + write
     });
     return total;
 }
@@ -514,19 +531,17 @@ void GeneticAlgorithm::hillclimbBest()
         }
         isBinary = not isBinary;
 
-        hillclimbChromozome(bestChromozome, 0); // using 1st index because its free
+        hillclimbChromozome(bestChromozome,
+                            0); // using 1st index because its free
         evaluateChromozomeAndUpdateBest(bestChromozome);
-        if (bestValue == previousBest) {
-            if (not isFirst) {
-                break;
-            }
+        if (bestValue == previousBest and not isFirst) {
+            break;
         }
 
         std::cout << "Best improvement " << (previousBest - bestValue) << '\n';
         previousBest = bestValue;
         isFirst = false;
     }
-    
 }
 
 void GeneticAlgorithm::hillclimbChromozome(chromozome& chromozome,
@@ -621,7 +636,7 @@ void GeneticAlgorithm::printPopulation() const
         [this](const auto& chromozome) { printChromozome(chromozome); });
 }
 
-void GeneticAlgorithm::run()
+double GeneticAlgorithm::run()
 {
     randomizePopulationAndInitBest();
     // printPopulation();
@@ -647,6 +662,7 @@ void GeneticAlgorithm::run()
     hillclimbBest(); // this is supposed to also change encodings to exploit all
                      // improvements in all implemented representations
     printBest();
+    return bestValue;
 }
 
 void GeneticAlgorithm::initContainers()
@@ -668,7 +684,6 @@ void GeneticAlgorithm::initContainers()
 void GeneticAlgorithm::initStrategies(CrossoverType crossoverType,
                                       HillclimbingType hillclimbingType)
 {
-    // TODO: add gray decoding strategy
     decodingStrategy = decodeBinaryVariable;
 
     crossoverPopulationStrategy = [&]() -> std::function<void()> {

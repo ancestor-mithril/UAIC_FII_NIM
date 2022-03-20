@@ -1,6 +1,6 @@
 BUILDDIR=build
 APP=program
-OPT=O3
+OPT=Ofast # Check O2 against Ofast.
 CMAKE_CXX_FLAGS=-std=c++20 -${OPT} -Wall -Wextra -Wpedantic
 
 cxx:

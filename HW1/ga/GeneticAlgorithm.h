@@ -38,7 +38,7 @@ class GeneticAlgorithm
                      std::string&& functionName, bool applyShift,
                      bool applyRotation);
     void sanityCheck();
-    void run();
+    double run();
     void printBest() const; // TODO: also add stream to print to
 
   private:
@@ -76,6 +76,9 @@ class GeneticAlgorithm
     /// for decoding
     double evaluateChromozome(const chromozome& chromozome, std::size_t index);
     double evaluateChromozomeAndUpdateBest(std::size_t index);
+
+    void updateBestChromozome(int newValue, const chromozome& newBest);
+    void updateBestChromozome(int newValue, std::size_t index);
 
     /// this has to be done sequentially
     void evaluatePopulation();
@@ -161,7 +164,7 @@ class GeneticAlgorithm
 
     // TODO: find good values
     // TODO: use const where we should use const
-    double crossoverProbability;
+    const double crossoverProbability;
     double mutationProbability;
     double hypermutationRate;
     const double elitesPercentage;

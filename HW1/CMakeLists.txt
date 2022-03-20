@@ -6,15 +6,21 @@ project(
   LANGUAGES CXX
 )
 
-set(OPT O3)
+set(OPT Ofast)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+if (CMAKE_BUILD_TYPE STREQUAL "Release")
+    set(OE_BUILD_TYPE_DEFINE "OE_RELEASE")
+endif()
 add_compile_options(-std=c++20 
-                    -${OPT}
                     # -fmodules-ts
                     -Wall 
                     -Wextra 
                     -Wpedantic)
+
+if (CMAKE_BUILD_TYPE STREQUAL "Release")
+    add_compile_options(-${OPT})
+endif()
 
 add_custom_target(std_modules ALL
     COMMAND ${CMAKE_COMMAND} -E echo "Building standard library modules"
