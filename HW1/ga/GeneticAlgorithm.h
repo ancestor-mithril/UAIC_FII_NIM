@@ -7,7 +7,8 @@
 
 namespace ga {
 
-using chromozome = std::vector<bool>;
+using gene = bool;
+using chromozome = std::vector<gene>;
 using chromozome_cit = chromozome::const_iterator; // rename?, or remove?
 
 enum class CrossoverType

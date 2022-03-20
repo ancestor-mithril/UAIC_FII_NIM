@@ -185,9 +185,18 @@ void GeneticAlgorithm::binaryToGray(chromozome& binary, chromozome& gray)
 
 void GeneticAlgorithm::binaryToGray(chromozome& binary)
 {
-    // TODO: Replace
-    chromozome gray{binary};
-    binaryToGray(binary, gray);
+    // might be more efficient than previous
+    std::array<gene, cst::bitsPerVariable> aux;
+    for (auto i = 0; i < dimensions; ++i) {
+        const auto begin = i * cst::bitsPerVariable;
+        const auto end = begin + cst::bitsPerVariable;
+
+        aux[0] = binary[begin];
+        for (auto j = begin + 1; j < end; ++j) {
+            aux[j - begin] = (binary[j - 1] != binary[j]);
+        }
+        std::swap_ranges(aux.begin(), aux.end(), binary.begin() + begin);
+    }
 }
 
 void GeneticAlgorithm::grayToBinary(chromozome& gray, chromozome& binary)
@@ -206,9 +215,19 @@ void GeneticAlgorithm::grayToBinary(chromozome& gray, chromozome& binary)
 
 void GeneticAlgorithm::grayToBinary(chromozome& gray)
 {
-    // TODO: Replace
-    chromozome binary{gray};
-    grayToBinary(gray, binary);
+    // might be more efficient than previous
+    std::array<gene, cst::bitsPerVariable> aux;
+    for (auto i = 0; i < dimensions; ++i) {
+        const auto begin = i * cst::bitsPerVariable;
+        const auto end = begin + cst::bitsPerVariable;
+
+        aux[0] = gray[begin];
+        for (auto j = begin + 1; j < end; ++j) {
+            const auto auxIndex = j - begin;
+            aux[auxIndex] = gray[j] ? not aux[auxIndex - 1] : aux[auxIndex - 1];
+        }
+        std::swap_ranges(aux.begin(), aux.end(), gray.begin() + begin);
+    }
 }
 
 void GeneticAlgorithm::binaryToGreyPopulation()
