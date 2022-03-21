@@ -53,8 +53,8 @@ GeneticAlgorithm getDefault(std::string&& functionName)
             20,                                // encodingChangeRate
             2000,                              // maxNoImprovementSteps
             std::move(functionName),
-            false,  // applyShift
-            false}; // applyRotation
+            true,  // applyShift
+            true}; // applyRotation
 }
 
 GeneticAlgorithm::GeneticAlgorithm(
@@ -81,9 +81,9 @@ GeneticAlgorithm::GeneticAlgorithm(
     , function{std::move(functionName), dimensions, applyShift, applyRotation}
 // clang-format on
 {
-    std::cout << "Using " << cst::bitsPerVariable << " bits per variable\n";
-    std::cout << "Using " << cst::discriminator << " discriminator\n";
-    std::cout << "Using " << bitsPerChromozome << " bits per chromozome\n";
+    // std::cout << "Using " << cst::bitsPerVariable << " bits per variable\n";
+    // std::cout << "Using " << cst::discriminator << " discriminator\n";
+    // std::cout << "Using " << bitsPerChromozome << " bits per chromozome\n";
 
     initContainers();
     initStrategies(crossoverType, hillclimbingType);
@@ -115,7 +115,7 @@ void GeneticAlgorithm::sanityCheck()
 
     std::vector<double> ourCheck(dimensions, 0.0);
     std::vector<double> aux(dimensions, 0.0);
-    std::cout << function(ourCheck, aux);
+    std::cout << function(ourCheck, aux) << '\n';
 }
 
 void GeneticAlgorithm::randomizePopulationAndInitBest()
@@ -572,7 +572,6 @@ void GeneticAlgorithm::hillclimbBest()
             break;
         }
 
-        std::cout << "Best improvement " << (previousBest - bestValue) << '\n';
         previousBest = bestValue;
         isFirst = false;
     }
@@ -722,14 +721,10 @@ void GeneticAlgorithm::printPopulation() const
 double GeneticAlgorithm::run()
 {
     randomizePopulationAndInitBest();
-    // printPopulation();
     // hillclimbPopulation();
     updateBestFromPopulation();
 
     for (epoch = 0; epoch < maxSteps / populationSize; ++epoch) {
-        if (epoch % 10 == 0) {
-            std::cout << "Epoch: " << epoch << "\tBest: " << bestValue << '\n';
-        }
         if (stop()) {
             break;
         }
@@ -742,9 +737,8 @@ double GeneticAlgorithm::run()
     hillclimbPopulation();
     // printPopulation();
     updateBestFromPopulation();
-    hillclimbBest(); // this is supposed to also change encodings to exploit all
-                     // improvements in all implemented representations
-    printBest();
+    hillclimbBest();
+    // printBest();
     return bestValue;
 }
 

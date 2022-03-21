@@ -39,7 +39,7 @@ std::vector<double> readShift(std::size_t dimensions, int index, bool shiftFlag)
         throw std::runtime_error{"File " + file + " does not exist"};
     }
 
-    std::cout << "Reading file " << file << '\n';
+    // std::cout << "Reading file " << file << '\n';
     std::ifstream in{file};
     std::vector<double> x(std::istream_iterator<double>{in},
                           std::istream_iterator<double>{});
@@ -61,12 +61,12 @@ readRotate(std::size_t rows, std::size_t columns, int index, bool rotateFlag)
     }
 
     const auto file = getInputDir() + "M_" + std::to_string(index) + "_D" +
-                      std::to_string(rows) + ".txt";
+                      std::to_string(columns) + ".txt";
     if (not fs::exists(file)) {
         throw std::runtime_error{"File " + file + " does not exist"};
     }
 
-    std::cout << "Reading file " << file << '\n';
+    // std::cout << "Reading file " << file << '\n';
     std::ifstream in{file};
     std::vector<std::vector<double>> rotate;
     for (std::string str; std::getline(in, str);) {
@@ -100,7 +100,7 @@ std::vector<std::size_t> readShuffle(std::size_t dimensions, int index)
         throw std::runtime_error{"File " + file + " does not exist"};
     }
 
-    std::cout << "Reading file " << file << '\n';
+    // std::cout << "Reading file " << file << '\n';
     std::ifstream in{file};
     std::vector<std::size_t> x(std::istream_iterator<std::size_t>{in},
                                std::istream_iterator<std::size_t>{});
@@ -227,7 +227,7 @@ FunctionManager::initFunction(int dimensions, bool shiftFlag, bool rotateFlag)
         const auto [index, f, fStar, n] = compositionFunctions.at(functionName);
         return [=, f = std::move(f),
                 shift = readShift(dimensions * n, index, true),
-                rotate = readRotate(dimensions, dimensions * n, index, true)](
+                rotate = readRotate(dimensions * n, dimensions, index, true)](
                    std::vector<double>& x, std::vector<double>& aux) {
             return f(x, aux, shift, rotate, true) + fStar; // always rotate
         };
