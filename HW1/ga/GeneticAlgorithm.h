@@ -36,7 +36,7 @@ class GeneticAlgorithm
                      HillclimbingType hillclimbingType, int populationSize,
                      int dimensions, int stepsToHypermutation,
                      int encodingChangeRate, int maxNoImprovementSteps,
-                     std::string&& functionName, bool applyShift,
+                     const std::string& functionName, bool applyShift,
                      bool applyRotation);
     void sanityCheck();
     double run();
@@ -199,6 +199,6 @@ class GeneticAlgorithm
     FunctionManager function;
 };
 
-GeneticAlgorithm getDefault(std::string&& functionName);
+GeneticAlgorithm getDefault(const std::string& functionName);
 
 } // namespace ga

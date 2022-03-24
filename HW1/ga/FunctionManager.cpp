@@ -105,6 +105,7 @@ std::vector<std::size_t> readShuffle(std::size_t dimensions, int index)
     std::vector<std::size_t> x(std::istream_iterator<std::size_t>{in},
                                std::istream_iterator<std::size_t>{});
 
+    // TODO: Debug
     // Validation
     std::set<std::size_t> set;
     for (auto& i : x) {
@@ -113,17 +114,17 @@ std::vector<std::size_t> readShuffle(std::size_t dimensions, int index)
             // i can't be smaller than 0 because it's size_t
             std::cerr << "I is " << i << ", max accepted value is "
                       << dimensions - 1 << '\n';
-            std::runtime_error{"Read error"};
+            throw std::runtime_error{"Read error"};
         }
         auto [it, inserted] = set.insert(i);
         if (inserted) {
             std::cerr << "Index is repeating: " << i << '\n';
-            std::runtime_error{"Read error"};
+            throw std::runtime_error{"Read error"};
         }
     }
     if (set.size() != dimensions) {
         std::cerr << "Not valid indices from 0 to " << dimensions - 1;
-        std::runtime_error{"Read error"};
+        throw std::runtime_error{"Read error"};
     }
 
     return x;
@@ -131,9 +132,10 @@ std::vector<std::size_t> readShuffle(std::size_t dimensions, int index)
 
 } // namespace
 
-FunctionManager::FunctionManager(std::string&& functionName, int dimensions,
-                                 bool shiftFlag, bool rotateFlag)
-    : functionName{std::move(functionName)}
+FunctionManager::FunctionManager(const std::string& functionName,
+                                 int dimensions, bool shiftFlag,
+                                 bool rotateFlag)
+    : functionName{functionName}
 {
 
     if ((shiftFlag or rotateFlag) and dimensions != 10 and dimensions != 20) {

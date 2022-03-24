@@ -37,22 +37,22 @@ decodeGrayVariable(const chromozome_cit begin, const chromozome_cit end)
 
 } // namespace
 
-GeneticAlgorithm getDefault(std::string&& functionName)
+GeneticAlgorithm getDefault(const std::string& functionName)
 {
     // TODO: Make tests
     return {0.3,                               // crossoverProbability
-            0.01,                             // mutationProbability
-            0.1,                              // hypermutationRate
-            0.08,                              // elitesPercentage
-            5.0,                              // selectionPressure
+            0.01,                              // mutationProbability
+            0.1,                               // hypermutationRate
+            0.02,                              // elitesPercentage
+            10.0,                               // selectionPressure
             CrossoverType::Classic,            // crossoverType
             HillclimbingType::BestImprovement, // hillclimbingType
             cst::populationSize,               // populationSize
             10,                                // dimensions
             10,                                // stepsToHypermutation
             10,                                // encodingChangeRate
-            2000,                              // maxNoImprovementSteps
-            std::move(functionName),
+            1900,                              // maxNoImprovementSteps
+            functionName,
             true,  // applyShift
             true}; // applyRotation
 }
@@ -63,7 +63,7 @@ GeneticAlgorithm::GeneticAlgorithm(
     CrossoverType crossoverType, HillclimbingType hillclimbingType,
     int populationSize, int dimensions, int stepsToHypermutation,
     int encodingChangeRate, int maxNoImprovementSteps,
-    std::string&& functionName, bool applyShift, bool applyRotation)
+    const std::string& functionName, bool applyShift, bool applyRotation)
     // clang-format off
     : crossoverProbability{crossoverProbability}
     , mutationProbability{mutationProbability}
@@ -78,7 +78,7 @@ GeneticAlgorithm::GeneticAlgorithm(
     , encodingChangeRate{encodingChangeRate}
     , maxNoImprovementSteps{maxNoImprovementSteps}
     , elitesNumber{static_cast<int>(elitesPercentage * populationSize)}
-    , function{std::move(functionName), dimensions, applyShift, applyRotation}
+    , function{functionName, dimensions, applyShift, applyRotation}
 // clang-format on
 {
     // std::cout << "Using " << cst::bitsPerVariable << " bits per variable\n";
@@ -738,7 +738,7 @@ double GeneticAlgorithm::run()
     // printPopulation();
     updateBestFromPopulation();
     hillclimbBest();
-    printBest();
+    // printBest();
     return bestValue;
 }
 

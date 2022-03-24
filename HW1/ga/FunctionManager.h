@@ -8,8 +8,8 @@ namespace ga {
 class FunctionManager
 {
   public:
-    FunctionManager(std::string&& functionName, int dimensions, bool shiftFlag,
-                    bool rotateFlag);
+    FunctionManager(const std::string& functionName, int dimensions,
+                    bool shiftFlag, bool rotateFlag);
     double operator()(std::vector<double>& x, std::vector<double>& aux) const;
 
   private:

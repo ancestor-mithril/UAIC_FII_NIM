@@ -524,6 +524,7 @@ double cf02(std::vector<double>& x, std::vector<double>& aux,
     // fit is function result * lambda + bias
     // lambda is 1, 1, 1
     // bias is 0, 200, 100
+    // TODO: use iterators, do not create new vectors
     const std::array<double, N> fit{
         schwefel_func(x, aux, {shift.begin(), shift_margin_1},
                       {rotate.begin(), rotate_margin_1}, true,
