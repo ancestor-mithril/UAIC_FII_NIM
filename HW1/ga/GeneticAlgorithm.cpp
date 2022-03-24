@@ -40,17 +40,17 @@ decodeGrayVariable(const chromozome_cit begin, const chromozome_cit end)
 GeneticAlgorithm getDefault(std::string&& functionName)
 {
     // TODO: Make tests
-    return {0.7,                               // crossoverProbability
-            0.001,                             // mutationProbability
-            0.01,                              // hypermutationRate
-            0.04,                              // elitesPercentage
-            10.0,                              // selectionPressure
+    return {0.3,                               // crossoverProbability
+            0.01,                             // mutationProbability
+            0.1,                              // hypermutationRate
+            0.08,                              // elitesPercentage
+            5.0,                              // selectionPressure
             CrossoverType::Classic,            // crossoverType
             HillclimbingType::BestImprovement, // hillclimbingType
             cst::populationSize,               // populationSize
             10,                                // dimensions
             10,                                // stepsToHypermutation
-            20,                                // encodingChangeRate
+            10,                                // encodingChangeRate
             2000,                              // maxNoImprovementSteps
             std::move(functionName),
             true,  // applyShift
@@ -738,7 +738,7 @@ double GeneticAlgorithm::run()
     // printPopulation();
     updateBestFromPopulation();
     hillclimbBest();
-    // printBest();
+    printBest();
     return bestValue;
 }
 

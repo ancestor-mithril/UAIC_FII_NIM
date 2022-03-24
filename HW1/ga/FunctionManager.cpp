@@ -207,7 +207,8 @@ FunctionManager::initFunction(int dimensions, bool shiftFlag, bool rotateFlag)
                 shift = readShift(dimensions, index, shiftFlag),
                 rotate = readRotate(dimensions, dimensions, index, rotateFlag)](
                    std::vector<double>& x, std::vector<double>& aux) {
-            return f(x, aux, shift, rotate, shiftFlag, rotateFlag) + fStar;
+            return f(x, aux, shift, rotate, shiftFlag, rotateFlag);
+            // + fStar;
         };
     }
 
@@ -218,8 +219,8 @@ FunctionManager::initFunction(int dimensions, bool shiftFlag, bool rotateFlag)
                 rotate = readRotate(dimensions, dimensions, index, rotateFlag),
                 indices = readShuffle(dimensions, index)](
                    std::vector<double>& x, std::vector<double>& aux) {
-            return f(x, aux, shift, rotate, indices, shiftFlag, rotateFlag) +
-                   fStar;
+            return f(x, aux, shift, rotate, indices, shiftFlag, rotateFlag);
+            // + fStar;
         };
     }
 
@@ -229,7 +230,8 @@ FunctionManager::initFunction(int dimensions, bool shiftFlag, bool rotateFlag)
                 shift = readShift(dimensions * n, index, true),
                 rotate = readRotate(dimensions * n, dimensions, index, true)](
                    std::vector<double>& x, std::vector<double>& aux) {
-            return f(x, aux, shift, rotate, true) + fStar; // always rotate
+            return f(x, aux, shift, rotate, true); // always rotate
+            // + fStar;
         };
     }
 
