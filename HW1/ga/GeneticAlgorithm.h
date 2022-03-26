@@ -41,6 +41,7 @@ class GeneticAlgorithm
     void sanityCheck();
     double run();
     void printBest() const; // TODO: also add stream to print to
+    std::string toString() const;
 
   private:
     void randomizePopulationAndInitBest();
@@ -69,7 +70,7 @@ class GeneticAlgorithm
 
     /// evaluating chromozomes outside of population
     /// uses decodeChromozome 2nd overload
-    double evaluateChromozome(const chromozome& chromozome) const;
+    double evaluateChromozome(const chromozome& chromozome);
     double evaluateChromozomeAndUpdateBest(const chromozome& chromozome);
     /// evaluating population members by index
     double evaluateChromozome(std::size_t index);

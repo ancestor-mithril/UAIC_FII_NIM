@@ -40,18 +40,18 @@ decodeGrayVariable(const chromozome_cit begin, const chromozome_cit end)
 GeneticAlgorithm getDefault(const std::string& functionName)
 {
     // TODO: Make tests
-    return {0.3,                               // crossoverProbability
-            0.01,                              // mutationProbability
+    return {0.9,                               // crossoverProbability
+            0.005,                             // mutationProbability
             0.1,                               // hypermutationRate
             0.02,                              // elitesPercentage
-            10.0,                               // selectionPressure
+            5.0,                               // selectionPressure
             CrossoverType::Classic,            // crossoverType
             HillclimbingType::BestImprovement, // hillclimbingType
             cst::populationSize,               // populationSize
             10,                                // dimensions
             10,                                // stepsToHypermutation
-            10,                                // encodingChangeRate
-            1900,                              // maxNoImprovementSteps
+            5,                                 // encodingChangeRate
+            1'000'000,                         // maxNoImprovementSteps
             functionName,
             true,  // applyShift
             true}; // applyRotation
@@ -252,7 +252,7 @@ void GeneticAlgorithm::grayToBinaryPopulation()
                   });
 }
 
-double GeneticAlgorithm::evaluateChromozome(const chromozome& chromozome) const
+double GeneticAlgorithm::evaluateChromozome(const chromozome& chromozome)
 {
     auto decoded = decodeChromozome(chromozome);
     // copy used to cache result of rotate operation
@@ -681,6 +681,11 @@ void GeneticAlgorithm::adapt()
     }
 }
 
+std::string GeneticAlgorithm::toString() const
+{
+    return function.toString() + "Best: " + std::to_string(bestValue) + '\n';
+}
+
 void GeneticAlgorithm::printBest() const
 {
     std::cout << "Best: " << bestValue << '\n';
@@ -734,10 +739,10 @@ double GeneticAlgorithm::run()
         crossoverPopulationStrategy();
         evaluateAndSelect();
     }
-    hillclimbPopulation();
+    // hillclimbPopulation();
     // printPopulation();
     updateBestFromPopulation();
-    hillclimbBest();
+    // hillclimbBest();
     // printBest();
     return bestValue;
 }

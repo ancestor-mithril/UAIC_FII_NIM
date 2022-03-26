@@ -9,6 +9,7 @@
 #include <iostream>
 #include <ranges>
 #include <set>
+#include <sstream>
 #include <unordered_map>
 
 namespace fs = std::filesystem;
@@ -146,10 +147,26 @@ FunctionManager::FunctionManager(const std::string& functionName,
     function = initFunction(dimensions, shiftFlag, rotateFlag);
 }
 
-double FunctionManager::operator()(std::vector<double>& x,
-                                   std::vector<double>& aux) const
+std::string FunctionManager::toString() const
 {
-    return function(x, aux);
+    std::ostringstream ss;
+    ss << functionCalls << '\n';
+    for (const auto v : values) {
+        ss << v << ' ';
+    }
+    ss << '\n';
+    return ss.str();
+}
+
+double
+FunctionManager::operator()(std::vector<double>& x, std::vector<double>& aux)
+{
+    ++functionCalls;
+    auto ret = function(x, aux);
+    if (functionCalls % 1000) {
+        values.push_back(ret);
+    }
+    return ret;
 }
 
 std::function<double(std::vector<double>&, std::vector<double>&)>
