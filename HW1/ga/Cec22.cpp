@@ -64,14 +64,12 @@ void shiftRotateTransform(std::vector<double>& x, std::vector<double>& aux,
                          shiftFlag, rotateFlag);
 }
 
-void applyPermutation(std::vector<double>& nums,
+void applyPermutation(std::vector<double>& nums, std::vector<double>& aux,
                       const std::vector<std::size_t>& indices)
 {
-    std::vector<double> aux;
-    aux.reserve(nums.size());
-    std::transform(indices.begin(), indices.end(), std::back_inserter(aux),
-                   [&](auto i) { return std::move(nums[i]); });
-    nums = std::move(aux);
+    std::transform(indices.begin(), indices.end(), aux.begin(),
+                   [&](auto i) { return nums[i]; });
+    nums.swap(aux);
 }
 
 template <std::size_t Size>
@@ -81,19 +79,20 @@ double compositionFunctionCalculator(const std::vector<double>& x,
                                      const std::array<double, Size>& fit)
 {
     // TODO: recheck
+    const auto n = x.size();
     auto w_max = 0.0;
     auto w_sum = 0.0;
-    std::array<double, Size> w{};
+    std::array<double, Size> w{0.0};
     for (std::size_t i = 0; i < Size; ++i) {
-        for (std::size_t j = 0; j < x.size(); ++j) {
-            const auto temp = x[j] - shift[i * x.size() + j];
+        for (std::size_t j = 0; j < n; ++j) {
+            const auto temp = x[j] - shift[i * n + j];
             w[i] += temp * temp;
         }
 
         // else will happen only when x is shift
         if (w[i] != 0.0) [[likely]] {
             w[i] = std::sqrt(1.0 / w[i]) *
-                   std::exp(-w[i] / 2.0 / x.size() / delta[i] / delta[i]);
+                   std::exp(-w[i] / 2.0 / n / delta[i] / delta[i]);
         } else [[unlikely]] {
             w[i] = 1.0e99; // INF
         }
@@ -111,7 +110,6 @@ double compositionFunctionCalculator(const std::vector<double>& x,
             [](auto f, auto elem) { return f + elem / Size; });
     }
 
-    // we could calculate w_sum in the previous iteration
     return std::inner_product(
         w.begin(), w.end(), fit.begin(), 0.0, std::plus<double>(),
         [=](auto w, auto fit) { return w / w_sum * fit; });
@@ -138,14 +136,13 @@ double ackley_func(std::vector<double>& x, std::vector<double>& aux,
     return E - 20.0 * std::exp(sum1) - std::exp(sum2) + 20.0;
 }
 
-double bent_cigar_func(std::vector<double>& x, std::vector<double>& aux,
-                       const std::vector<double>& shift,
-                       const std::vector<std::vector<double>>& rotate,
-                       bool shiftFlag, bool rotateFlag)
+double
+bent_cigar_func(std::vector<double>& x, std::vector<double>& aux,
+                const vector_begin shiftBegin, const matrix_begin rotateBegin,
+                bool shiftFlag, bool rotateFlag)
 {
-    shiftRotateTransform(x, aux, shift.cbegin(), rotate.cbegin(), 1.0,
-                         shiftFlag, rotateFlag);
-
+    shiftRotateTransform(x, aux, shiftBegin, rotateBegin, 1.0, shiftFlag,
+                         rotateFlag);
     // assuming x.size() >= 1
     return std::accumulate(std::next(x.begin()), x.end(), x[0] * x[0],
                            [](auto f, auto elem) {
@@ -154,18 +151,36 @@ double bent_cigar_func(std::vector<double>& x, std::vector<double>& aux,
     // TODO: accumulate vs reduce
 }
 
-double discus_func(std::vector<double>& x, std::vector<double>& aux,
-                   const std::vector<double>& shift,
-                   const std::vector<std::vector<double>>& rotate,
-                   bool shiftFlag, bool rotateFlag)
+double bent_cigar_func(std::vector<double>& x, std::vector<double>& aux,
+                       const std::vector<double>& shift,
+                       const std::vector<std::vector<double>>& rotate,
+                       bool shiftFlag, bool rotateFlag)
 {
-    shiftRotateTransform(x, aux, shift.cbegin(), rotate.cbegin(), 1.0,
-                         shiftFlag, rotateFlag);
+    return bent_cigar_func(x, aux, shift.cbegin(), rotate.cbegin(), shiftFlag,
+                           rotateFlag);
+}
+
+double
+discus_func(std::vector<double>& x, std::vector<double>& aux,
+            const vector_begin shiftBegin, const matrix_begin rotateBegin,
+            bool shiftFlag, bool rotateFlag)
+{
+    shiftRotateTransform(x, aux, shiftBegin, rotateBegin, 1.0, shiftFlag,
+                         rotateFlag);
     // 1000000.0 = std::pow(10.0, 6.0)
     // assuming x.size() >= 1
     return std::accumulate(std::next(x.begin()), x.end(),
                            x[0] * x[0] * 1000000.0,
                            [](auto f, auto elem) { return f + elem * elem; });
+}
+
+double discus_func(std::vector<double>& x, std::vector<double>& aux,
+                   const std::vector<double>& shift,
+                   const std::vector<std::vector<double>>& rotate,
+                   bool shiftFlag, bool rotateFlag)
+{
+    return discus_func(x, aux, shift.cbegin(), rotate.cbegin(), shiftFlag,
+                       rotateFlag);
 }
 
 double
@@ -275,11 +290,10 @@ double happycat_func(std::vector<double>& x, std::vector<double>& aux,
 }
 
 double hgbat_func(std::vector<double>& x, std::vector<double>& aux,
-                  const std::vector<double>& shift,
-                  const std::vector<std::vector<double>>& rotate,
+                  const vector_begin shiftBegin, const matrix_begin rotateBegin,
                   bool shiftFlag, bool rotateFlag)
 {
-    shiftRotateTransform(x, aux, shift.cbegin(), rotate.cbegin(), 5.0 / 100.0,
+    shiftRotateTransform(x, aux, shiftBegin, rotateBegin, 5.0 / 100.0,
                          shiftFlag, rotateFlag);
     auto sum_y = 0.0;
     auto r2 = 0.0;
@@ -293,7 +307,15 @@ double hgbat_func(std::vector<double>& x, std::vector<double>& aux,
            (0.5 * r2 + sum_y) / x.size() + 0.5;
 }
 
-/// Overload optimized for composition functions
+double hgbat_func(std::vector<double>& x, std::vector<double>& aux,
+                  const std::vector<double>& shift,
+                  const std::vector<std::vector<double>>& rotate,
+                  bool shiftFlag, bool rotateFlag)
+{
+    return hgbat_func(x, aux, shift.cbegin(), rotate.cbegin(), shiftFlag,
+                      rotateFlag);
+}
+
 double
 rosenbrock_func(std::vector<double>& x, std::vector<double>& aux,
                 const vector_begin shiftBegin, const matrix_begin rotateBegin,
@@ -322,26 +344,36 @@ double rosenbrock_func(std::vector<double>& x, std::vector<double>& aux,
                            rotateFlag);
 }
 
-double rastrigin_func(std::vector<double>& x, std::vector<double>& aux,
-                      const std::vector<double>& shift,
-                      const std::vector<std::vector<double>>& rotate,
-                      bool shiftFlag, bool rotateFlag)
+double
+rastrigin_func(std::vector<double>& x, std::vector<double>& aux,
+               const vector_begin shiftBegin, const matrix_begin rotateBegin,
+               bool shiftFlag, bool rotateFlag)
 {
-    shiftRotateTransform(x, aux, shift, rotate, 5.12 / 100.0, shiftFlag,
-                         rotateFlag);
+    shiftRotateTransform(x, aux, shiftBegin, rotateBegin, 5.12 / 100.0,
+                         shiftFlag, rotateFlag);
     return std::accumulate(
         x.begin(), x.end(), 10.0 * x.size(), [=](auto f, auto elem) {
             return f + elem * elem - 10.0 * std::cos(2.0 * PI * elem);
         });
 }
 
-double schwefel_func(std::vector<double>& x, std::vector<double>& aux,
-                     const std::vector<double>& shift,
-                     const std::vector<std::vector<double>>& rotate,
-                     bool shiftFlag, bool rotateFlag)
+double rastrigin_func(std::vector<double>& x, std::vector<double>& aux,
+                      const std::vector<double>& shift,
+                      const std::vector<std::vector<double>>& rotate,
+                      bool shiftFlag, bool rotateFlag)
 {
-    shiftRotateTransform(x, aux, shift, rotate, 1000.0 / 100.0, shiftFlag,
-                         rotateFlag);
+    return rastrigin_func(x, aux, shift.cbegin(), rotate.cbegin(), shiftFlag,
+                          rotateFlag);
+}
+
+double
+schwefel_func(std::vector<double>& x, std::vector<double>& aux,
+              const vector_begin shiftBegin, const matrix_begin rotateBegin,
+              bool shiftFlag, bool rotateFlag)
+{
+    shiftRotateTransform(x, aux, shiftBegin, rotateBegin, 1000.0 / 100.0,
+                         shiftFlag, rotateFlag);
+
     return std::accumulate(
         x.begin(), x.end(), 0.0, [n = x.size()](auto f, auto elem) {
             elem += 4.209687462275036e+002;
@@ -361,6 +393,15 @@ double schwefel_func(std::vector<double>& x, std::vector<double>& aux,
             }
             return f + 4.189828872724338e+002 * n;
         });
+}
+
+double schwefel_func(std::vector<double>& x, std::vector<double>& aux,
+                     const std::vector<double>& shift,
+                     const std::vector<std::vector<double>>& rotate,
+                     bool shiftFlag, bool rotateFlag)
+{
+    return schwefel_func(x, aux, shift.cbegin(), rotate.cbegin(), shiftFlag,
+                         rotateFlag);
 }
 
 double schaffer_F7_func(std::vector<double>& x, std::vector<double>& aux,
@@ -464,7 +505,7 @@ hf01(std::vector<double>& x, std::vector<double>& aux,
 {
     // [0.4, 0.4, 0.2]
     shiftRotateTransform(x, aux, shift, rotate, 1.0, shiftFlag, rotateFlag);
-    applyPermutation(x, indices);
+    applyPermutation(x, aux, indices);
 
     const auto range = std::ceil(0.4 * x.size());
     const auto margin_1 = std::next(x.begin(), range); // 0.4
@@ -472,6 +513,9 @@ hf01(std::vector<double>& x, std::vector<double>& aux,
     const auto aux_margin_1 = std::next(aux.begin(), range);
     const auto aux_margin_2 = std::next(margin_1, range);
 
+    // TODO: Find a way to not create new vectors again
+    // might be hard because we would need to modify everithing
+    // to use container::begin, container::end
     std::vector<double> z1{x.begin(), margin_1};
     std::vector<double> z2{margin_1, margin_2};
     std::vector<double> z3{margin_2, x.end()};
@@ -517,8 +561,6 @@ double cf01(std::vector<double>& x, std::vector<double>& aux,
     const auto rotate_margin_3 = std::next(rotate_margin_2, x.size());
     const auto rotate_margin_4 = std::next(rotate_margin_3, x.size());
 
-    // TODO: modify all functions to accept vector_begin or matrix_begin
-
     constexpr auto N = 5;
     // fit is function result * lambda + bias
     // lambda is 1, 1e-6, 1e-6, 1e-6, 1e-6
@@ -526,20 +568,17 @@ double cf01(std::vector<double>& x, std::vector<double>& aux,
     const std::array<double, N> fit{
         rosenbrock_func(x, aux, shift.cbegin(), rotate.cbegin(), true,
                         rotateFlag),
-        ellips_func(x, aux, {shift_margin_1, shift_margin_2},
-                    {rotate_margin_1, rotate_margin_2}, true, rotateFlag) *
+        ellips_func(x, aux, shift_margin_1, rotate_margin_1, true, rotateFlag) *
                 1e-6 +
             200,
-        bent_cigar_func(x, aux, {shift_margin_2, shift_margin_3},
-                        {rotate_margin_2, rotate_margin_3}, true, rotateFlag) *
+        bent_cigar_func(x, aux, shift_margin_2, rotate_margin_2, true,
+                        rotateFlag) *
                 1e-6 +
             300,
-        discus_func(x, aux, {shift_margin_3, shift_margin_4},
-                    {rotate_margin_3, rotate_margin_4}, true, rotateFlag) *
+        discus_func(x, aux, shift_margin_3, rotate_margin_3, true, rotateFlag) *
                 1e-6 +
             100,
-        ellips_func(x, aux, {shift_margin_4, shift.end()},
-                    {rotate_margin_4, rotate.end()}, true, false) *
+        ellips_func(x, aux, shift_margin_4, rotate_margin_4, true, false) *
                 1e-6 +
             400, // ?? why false
     };
@@ -564,14 +603,12 @@ double cf02(std::vector<double>& x, std::vector<double>& aux,
     // bias is 0, 200, 100
     // TODO: use iterators, do not create new vectors
     const std::array<double, N> fit{
-        schwefel_func(x, aux, {shift.begin(), shift_margin_1},
-                      {rotate.begin(), rotate_margin_1}, true,
+        schwefel_func(x, aux, shift.cbegin(), rotate.cbegin(), true,
                       false), // ?? why false
-        rastrigin_func(x, aux, {shift_margin_1, shift_margin_2},
-                       {rotate_margin_1, rotate_margin_2}, true, rotateFlag) +
+        rastrigin_func(x, aux, shift_margin_1, rotate_margin_1, true,
+                       rotateFlag) +
             200,
-        hgbat_func(x, aux, {shift_margin_2, shift.end()},
-                   {rotate_margin_2, rotate.end()}, true, rotateFlag) +
+        hgbat_func(x, aux, shift_margin_2, rotate_margin_2, true, rotateFlag) +
             100,
     };
     const std::array<int, N> delta{20, 10, 10};

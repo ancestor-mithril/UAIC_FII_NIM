@@ -81,5 +81,8 @@ exp1: rel1
 	./${BUILDDIR}/${APP}.exe 1
 
 exp2: rel1
-	./${BUILDDIR}/${APP}.exe 2 zakharov_func \
+	./${BUILDDIR}/${APP}.exe 2 zakharov_func & \
+	./${BUILDDIR}/${APP}.exe 2 cf02 & \
+	./${BUILDDIR}/${APP}.exe 2 cf01 & \
+	./${BUILDDIR}/${APP}.exe 2 hf01 & \
 

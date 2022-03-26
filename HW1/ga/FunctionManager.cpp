@@ -106,7 +106,6 @@ std::vector<std::size_t> readShuffle(std::size_t dimensions, int index)
     std::vector<std::size_t> x(std::istream_iterator<std::size_t>{in},
                                std::istream_iterator<std::size_t>{});
 
-    // TODO: Debug
     // Validation
     std::set<std::size_t> set;
     for (auto& i : x) {
@@ -118,7 +117,7 @@ std::vector<std::size_t> readShuffle(std::size_t dimensions, int index)
             throw std::runtime_error{"Read error"};
         }
         auto [it, inserted] = set.insert(i);
-        if (inserted) {
+        if (not inserted) {
             std::cerr << "Index is repeating: " << i << '\n';
             throw std::runtime_error{"Read error"};
         }

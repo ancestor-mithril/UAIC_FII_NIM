@@ -336,7 +336,7 @@ void runExperiments2(const std::string& functionName)
 void test()
 {
     ga::functions::sanity_check();
-    auto ga = ga::getDefault("zakharov_func");
+    auto ga = ga::getDefault("cf02");
     ga.sanityCheck();
     std::cout << ga.run() << '\n';
 }
