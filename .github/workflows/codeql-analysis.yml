@@ -62,8 +62,7 @@ jobs:
     #    and modify them (or add more) to build your code if your project
     #    uses a compiled language
 
-    - run: |
-      cd HW1/ && make debug
+    - run: cd HW1 && make rel1
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v1
