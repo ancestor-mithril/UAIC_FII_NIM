@@ -78,7 +78,6 @@ double compositionFunctionCalculator(const std::vector<double>& x,
                                      const std::array<int, Size>& delta,
                                      const std::array<double, Size>& fit)
 {
-    // TODO: recheck
     const auto n = x.size();
     auto w_max = 0.0;
     auto w_sum = 0.0;

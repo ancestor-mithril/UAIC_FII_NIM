@@ -8,8 +8,8 @@
 namespace ga {
 
 using gene = bool;
-using chromozome = std::vector<gene>;
-using chromozome_cit = chromozome::const_iterator; // rename?, or remove?
+using chromosome = std::vector<gene>;
+using chromosome_cit = chromosome::const_iterator; // rename?, or remove?
 
 enum class CrossoverType
 {
@@ -46,41 +46,41 @@ class GeneticAlgorithm
   private:
     void randomizePopulationAndInitBest();
 
-    /// Decoding chromozome and returning reference to vector to avoid
+    /// Decoding chromosome and returning reference to vector to avoid
     /// creating new vector for each call.
-    std::vector<double>& decodeChromozome(std::size_t index);
+    std::vector<double>& decodeChromosome(std::size_t index);
     /// uses decodings[index]
     std::vector<double>&
-    decodeChromozome(const chromozome& chromozome, std::size_t index);
-    /// Decoding version for chromozome which creates new vector
-    std::vector<double> decodeChromozome(const chromozome& chromozome) const;
+    decodeChromosome(const chromosome& chromosome, std::size_t index);
+    /// Decoding version for chromosome which creates new vector
+    std::vector<double> decodeChromosome(const chromosome& chromosome) const;
 
-    /// decodes one dimension from the chromozome, given by bounds
+    /// decodes one dimension from the chromosome, given by bounds
     double
-    decodeDimension(const chromozome_cit begin, const chromozome_cit end) const;
+    decodeDimension(const chromosome_cit begin, const chromosome_cit end) const;
 
     /// convert from one encoding to another using an auxiliar
-    void binaryToGray(chromozome& binary, chromozome& gray);
-    void grayToBinary(chromozome& gray, chromozome& binary);
+    void binaryToGray(chromosome& binary, chromosome& gray);
+    void grayToBinary(chromosome& gray, chromosome& binary);
     /// convert from one encoding to another without an auxiliar
-    void binaryToGray(chromozome& binary);
-    void grayToBinary(chromozome& gray);
+    void binaryToGray(chromosome& binary);
+    void grayToBinary(chromosome& gray);
     void binaryToGreyPopulation();
     void grayToBinaryPopulation();
 
-    /// evaluating chromozomes outside of population
-    /// uses decodeChromozome 2nd overload
-    double evaluateChromozome(const chromozome& chromozome);
-    double evaluateChromozomeAndUpdateBest(const chromozome& chromozome);
+    /// evaluating chromosomes outside of population
+    /// uses decodeChromosome 2nd overload
+    double evaluateChromosome(const chromosome& chromosome);
+    double evaluateChromosomeAndUpdateBest(const chromosome& chromosome);
     /// evaluating population members by index
-    double evaluateChromozome(std::size_t index);
-    /// evaluates chromozome outside of population, but uses decodings[index]
+    double evaluateChromosome(std::size_t index);
+    /// evaluates chromosome outside of population, but uses decodings[index]
     /// for decoding
-    double evaluateChromozome(const chromozome& chromozome, std::size_t index);
-    double evaluateChromozomeAndUpdateBest(std::size_t index);
+    double evaluateChromosome(const chromosome& chromosome, std::size_t index);
+    double evaluateChromosomeAndUpdateBest(std::size_t index);
 
-    void updateBestChromozome(double newValue, const chromozome& newBest);
-    void updateBestChromozome(double newValue, std::size_t index);
+    void updateBestChromosome(double newValue, const chromosome& newBest);
+    void updateBestChromosome(double newValue, std::size_t index);
 
     /// this has to be done sequentially
     void evaluatePopulation();
@@ -95,8 +95,8 @@ class GeneticAlgorithm
     void computeSelectionProbabilities(double total);
 
     // TODO: return by value then assign, or return by reference then assign?
-    chromozome selectChromozome();
-    /// copies in newPopulation selected chromozomes, then swaps vectors
+    chromosome selectChromosome();
+    /// copies in newPopulation selected chromosomes, then swaps vectors
     void selectNewPopulation();
 
     /// evaluates and selects the next generation
@@ -106,30 +106,30 @@ class GeneticAlgorithm
 
     /// we mutate all population except half the elites
     void mutatePopulation();
-    void mutateChromozome(chromozome& chromozome);
+    void mutateChromosome(chromosome& chromosome);
 
     /// select unique chormozomes for crossover and for each of them do
-    /// crossover with one (any) random chromozome (could even be itself, is
+    /// crossover with one (any) random chromosome (could even be itself, is
     /// this ok?)
     void crossoverPopulationChaotic();
-    /// doing crossover only between unique chromozomes in a single iteration
+    /// doing crossover only between unique chromosomes in a single iteration
     void crossoverPopulationClassic();
     /// sorting indices and doing crossover only for indices with value lower
     /// than crossoverProbability
     void crossoverPopulationSorted();
-    void crossoverChromozomes(std::size_t i, std::size_t j);
+    void crossoverChromosomes(std::size_t i, std::size_t j);
 
     /// applies one iteration of hillclimbing to all population
     void hillclimbPopulation(); // TODO: test std::threads vs execution::unseq
-    void hillclimbChromozome(std::size_t index);
-    void hillclimbChromozome(chromozome& chromozome, std::size_t index);
+    void hillclimbChromosome(std::size_t index);
+    void hillclimbChromosome(chromosome& chromosome, std::size_t index);
     void hillclimbBest();
-    void applyHillclimbing(chromozome& chromozome, std::size_t index);
+    void applyHillclimbing(chromosome& chromosome, std::size_t index);
     bool
-    firstImprovementHillclimbing(chromozome& chromozome, std::size_t index);
-    bool firstImprovementRandomHillclimbing(chromozome& chromozome,
+    firstImprovementHillclimbing(chromosome& chromosome, std::size_t index);
+    bool firstImprovementRandomHillclimbing(chromosome& chromosome,
                                             std::size_t index);
-    bool bestImprovementHillclimbing(chromozome& chromozome, std::size_t index);
+    bool bestImprovementHillclimbing(chromosome& chromosome, std::size_t index);
 
     /// Adaptation of hyperparameters depending on various factors
     void adapt();
@@ -142,14 +142,14 @@ class GeneticAlgorithm
     void initDistributions(
         int populationSize); // we will not need this if template Size
 
-    void printChromozome(const chromozome& chromozome) const;
-    void printChromozomeRepr(const chromozome& chromozome) const;
+    void printChromosome(const chromosome& chromosome) const;
+    void printChromosomeRepr(const chromosome& chromosome) const;
     void printPopulation() const;
 
     // TODO: test against char, might be faster because std::vector<double> is
     // space efficient but not time efficient
-    std::vector<chromozome> population;
-    std::vector<chromozome> newPopulation;
+    std::vector<chromosome> population;
+    std::vector<chromosome> newPopulation;
     std::vector<std::vector<double>> decodings;
     // used to optimize rotate operation
     std::vector<std::vector<double>> auxiliars;
@@ -160,7 +160,7 @@ class GeneticAlgorithm
     // selectionProbabilities.size() == population, it might be an idea to use
     // std array
 
-    chromozome bestChromozome;
+    chromosome bestChromosome;
     double bestValue;
 
     // TODO: find good values
@@ -174,7 +174,7 @@ class GeneticAlgorithm
     const int maxSteps;
     const int populationSize;    // TODO: make template Size
     const int dimensions;        // TODO: use constexpr
-    const int bitsPerChromozome; // TODO: make template bitsPerChromozome
+    const int bitsPerChromosome; // TODO: make template bitsPerChromosome
     const int stepsToHypermutation;
     const int encodingChangeRate;
     const int maxNoImprovementSteps;
@@ -189,14 +189,14 @@ class GeneticAlgorithm
     std::mt19937_64 gen{seed()};
     std::bernoulli_distribution randomBool;
     std::uniform_real_distribution<double> randomDouble{0.0, 1.0};
-    std::uniform_int_distribution<> radomChromozome; // initialized in ctor
+    std::uniform_int_distribution<> radomChromosome; // initialized in ctor
     std::uniform_int_distribution<> randomBitIndex;  // initialized in ctor
 
     /// applies decoding within bounds
-    std::function<long long(const chromozome_cit, const chromozome_cit)>
+    std::function<long long(const chromosome_cit, const chromosome_cit)>
         decodingStrategy;
     std::function<void()> crossoverPopulationStrategy;
-    std::function<bool(chromozome&, std::size_t)> hillclimbingStrategy;
+    std::function<bool(chromosome&, std::size_t)> hillclimbingStrategy;
     FunctionManager function;
 };
 

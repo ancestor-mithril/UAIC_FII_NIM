@@ -278,7 +278,7 @@ void runExperiments2(const std::string& functionName)
                     std::cout << i++ << ' ' << min << '\n';
                     auto rez = runGa(c,                     //
                                      m,                     //
-                                     h,                     //
+                                     h * m,                     //
                                      elitesPercentage,      //
                                      s,                     //
                                      crossoverType,         //
@@ -296,7 +296,7 @@ void runExperiments2(const std::string& functionName)
                         min = rez;
                         minCrossover = c;
                         minMutation = m;
-                        minHypermutation = h;
+                        minHypermutation = h * m;
                         minSelection = s;
                     }
                     c_value += rez;

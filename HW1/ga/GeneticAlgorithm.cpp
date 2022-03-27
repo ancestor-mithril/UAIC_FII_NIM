@@ -16,14 +16,14 @@ namespace ga {
 namespace {
 
 long long
-decodeBinaryVariable(const chromozome_cit begin, const chromozome_cit end)
+decodeBinaryVariable(const chromosome_cit begin, const chromosome_cit end)
 {
     return std::accumulate(begin, end, 0LL,
                            [](auto f, auto elem) { return f * 2 + elem; });
 }
 
 long long
-decodeGrayVariable(const chromozome_cit begin, const chromozome_cit end)
+decodeGrayVariable(const chromosome_cit begin, const chromosome_cit end)
 {
     auto prev = *begin;
     auto f = 0LL + prev;
@@ -73,7 +73,7 @@ GeneticAlgorithm::GeneticAlgorithm(
     , maxSteps{dimensions == 10 ? 200'000 : 1'000'000}
     , populationSize{populationSize}
     , dimensions{dimensions}
-    , bitsPerChromozome{dimensions * cst::bitsPerVariable}
+    , bitsPerChromosome{dimensions * cst::bitsPerVariable}
     , stepsToHypermutation{stepsToHypermutation}
     , encodingChangeRate{encodingChangeRate}
     , maxNoImprovementSteps{maxNoImprovementSteps}
@@ -83,7 +83,7 @@ GeneticAlgorithm::GeneticAlgorithm(
 {
     // std::cout << "Using " << cst::bitsPerVariable << " bits per variable\n";
     // std::cout << "Using " << cst::discriminator << " discriminator\n";
-    // std::cout << "Using " << bitsPerChromozome << " bits per chromozome\n";
+    // std::cout << "Using " << bitsPerChromosome << " bits per chromosome\n";
 
     initContainers();
     initStrategies(crossoverType, hillclimbingType);
@@ -97,19 +97,19 @@ void GeneticAlgorithm::sanityCheck()
     std::cout << "GeneticAlgorithm::sanityCheck" << '\n';
     population[0][2] = 0;
     population[0][3] = 1;
-    auto firstVal = evaluateChromozome(0);
+    auto firstVal = evaluateChromosome(0);
     std::cout << firstVal << '\n';
     binaryToGray(population[0], newPopulation[0]);
 
     decodingStrategy = decodeGrayVariable;
-    auto secondVal = evaluateChromozome(0);
+    auto secondVal = evaluateChromosome(0);
     if (secondVal != firstVal) {
         throw std::runtime_error{"Gray code conversion is not equivalent"};
     }
 
     grayToBinary(population[0], newPopulation[0]);
     decodingStrategy = decodeBinaryVariable;
-    if (firstVal != evaluateChromozome(0)) {
+    if (firstVal != evaluateChromosome(0)) {
         throw std::runtime_error{"Binary to gray not working"};
     }
 
@@ -120,25 +120,25 @@ void GeneticAlgorithm::sanityCheck()
 
 void GeneticAlgorithm::randomizePopulationAndInitBest()
 {
-    for (auto& chromozome : population) {
-        for (auto bit : chromozome) {
+    for (auto& chromosome : population) {
+        for (auto bit : chromosome) {
             bit = randomBool(gen); // bit is ref
         }
     }
-    bestChromozome = population[0];
-    bestValue = evaluateChromozome(0);
+    bestChromosome = population[0];
+    bestValue = evaluateChromosome(0);
 }
 
-std::vector<double>& GeneticAlgorithm::decodeChromozome(std::size_t index)
+std::vector<double>& GeneticAlgorithm::decodeChromosome(std::size_t index)
 {
-    return decodeChromozome(population[index], index);
+    return decodeChromosome(population[index], index);
 }
 
 std::vector<double>&
-GeneticAlgorithm::decodeChromozome(const chromozome& chromozome,
+GeneticAlgorithm::decodeChromosome(const chromosome& chromosome,
                                    std::size_t index)
 {
-    auto it = chromozome.cbegin();
+    auto it = chromosome.cbegin();
     for (auto i = 0; i < dimensions; ++i) {
         const auto end = std::next(it, cst::bitsPerVariable);
         decodings[index][i] = decodeDimension(it, end);
@@ -148,11 +148,11 @@ GeneticAlgorithm::decodeChromozome(const chromozome& chromozome,
 }
 
 std::vector<double>
-GeneticAlgorithm::decodeChromozome(const chromozome& chromozome) const
+GeneticAlgorithm::decodeChromosome(const chromosome& chromosome) const
 {
     std::vector<double> x;
     x.reserve(dimensions);
-    auto it = chromozome.cbegin();
+    auto it = chromosome.cbegin();
     for (auto i = 0; i < dimensions; ++i) {
         const auto end = std::next(it, cst::bitsPerVariable);
         x.push_back(decodeDimension(it, end));
@@ -161,21 +161,21 @@ GeneticAlgorithm::decodeChromozome(const chromozome& chromozome) const
     return x;
 }
 
-double GeneticAlgorithm::decodeDimension(const chromozome_cit begin,
-                                         const chromozome_cit end) const
+double GeneticAlgorithm::decodeDimension(const chromosome_cit begin,
+                                         const chromosome_cit end) const
 {
     return decodingStrategy(begin, end) / cst::discriminator *
                (cst::maximum - cst::minimum) +
            cst::minimum;
 }
 
-void GeneticAlgorithm::binaryToGray(chromozome& binary, chromozome& gray)
+void GeneticAlgorithm::binaryToGray(chromosome& binary, chromosome& gray)
 {
     // test this against the method bellow
 
     // this has the advantage of doing std::vector::swap (3 * std::move), and
     // only once, while the one bellow uses swap_ranges which actually iterates
-    // trough given range dimensions time, therefore O(chromozome.size())
+    // trough given range dimensions time, therefore O(chromosome.size())
     for (auto i = 0; i < dimensions; ++i) {
         const auto begin = i * cst::bitsPerVariable;
         const auto end = begin + cst::bitsPerVariable;
@@ -188,7 +188,7 @@ void GeneticAlgorithm::binaryToGray(chromozome& binary, chromozome& gray)
     std::swap(binary, gray);
 }
 
-void GeneticAlgorithm::binaryToGray(chromozome& binary)
+void GeneticAlgorithm::binaryToGray(chromosome& binary)
 {
     std::array<gene, cst::bitsPerVariable> aux;
     for (auto i = 0; i < dimensions; ++i) {
@@ -204,7 +204,7 @@ void GeneticAlgorithm::binaryToGray(chromozome& binary)
     // doesn't seem to be used
 }
 
-void GeneticAlgorithm::grayToBinary(chromozome& gray, chromozome& binary)
+void GeneticAlgorithm::grayToBinary(chromosome& gray, chromosome& binary)
 {
     for (auto i = 0; i < dimensions; ++i) {
         const auto begin = i * cst::bitsPerVariable;
@@ -218,7 +218,7 @@ void GeneticAlgorithm::grayToBinary(chromozome& gray, chromozome& binary)
     std::swap(binary, gray);
 }
 
-void GeneticAlgorithm::grayToBinary(chromozome& gray)
+void GeneticAlgorithm::grayToBinary(chromosome& gray)
 {
     std::array<gene, cst::bitsPerVariable> aux;
     for (auto i = 0; i < dimensions; ++i) {
@@ -252,9 +252,9 @@ void GeneticAlgorithm::grayToBinaryPopulation()
                   });
 }
 
-double GeneticAlgorithm::evaluateChromozome(const chromozome& chromozome)
+double GeneticAlgorithm::evaluateChromosome(const chromosome& chromosome)
 {
-    auto decoded = decodeChromozome(chromozome);
+    auto decoded = decodeChromosome(chromosome);
     // copy used to cache result of rotate operation
     // doesn't bring any benefit for this method, however it does for the index
     // case
@@ -263,64 +263,64 @@ double GeneticAlgorithm::evaluateChromozome(const chromozome& chromozome)
 }
 
 double
-GeneticAlgorithm::evaluateChromozomeAndUpdateBest(const chromozome& chromozome)
+GeneticAlgorithm::evaluateChromosomeAndUpdateBest(const chromosome& chromosome)
 {
-    auto decoded = decodeChromozome(chromozome);
+    auto decoded = decodeChromosome(chromosome);
     auto aux = decoded;
     // copy used to cache result of rotate operation
     auto ret = function(decoded, aux);
 
     if (ret < bestValue) {
-        updateBestChromozome(ret, chromozome);
+        updateBestChromosome(ret, chromosome);
     }
     return ret;
 }
 
-double GeneticAlgorithm::evaluateChromozome(std::size_t index)
+double GeneticAlgorithm::evaluateChromosome(std::size_t index)
 {
-    return function(decodeChromozome(index), auxiliars[index]);
+    return function(decodeChromosome(index), auxiliars[index]);
 }
 
-double GeneticAlgorithm::evaluateChromozome(const chromozome& chromozome,
+double GeneticAlgorithm::evaluateChromosome(const chromosome& chromosome,
                                             std::size_t index)
 {
-    return function(decodeChromozome(chromozome, index), auxiliars[index]);
+    return function(decodeChromosome(chromosome, index), auxiliars[index]);
 }
 
-double GeneticAlgorithm::evaluateChromozomeAndUpdateBest(std::size_t index)
+double GeneticAlgorithm::evaluateChromosomeAndUpdateBest(std::size_t index)
 {
     // might be better to use iterator instead of index
-    auto ret = evaluateChromozome(index);
+    auto ret = evaluateChromosome(index);
     if (ret < bestValue) {
-        updateBestChromozome(ret, index);
+        updateBestChromosome(ret, index);
     }
     return ret;
 }
 
-void GeneticAlgorithm::updateBestChromozome(double newValue, std::size_t index)
+void GeneticAlgorithm::updateBestChromosome(double newValue, std::size_t index)
 {
     bestValue = newValue;
-    bestChromozome = population[index];
+    bestChromosome = population[index];
     if (not isBinary) {
-        grayToBinary(bestChromozome, newPopulation[index]);
+        grayToBinary(bestChromosome, newPopulation[index]);
     }
     lastImprovement = epoch;
 }
 
-void GeneticAlgorithm::updateBestChromozome(double newValue,
-                                            const chromozome& newBest)
+void GeneticAlgorithm::updateBestChromosome(double newValue,
+                                            const chromosome& newBest)
 {
     bestValue = newValue;
-    bestChromozome = newBest;
+    bestChromosome = newBest;
     if (not isBinary) {
-        grayToBinary(bestChromozome);
+        grayToBinary(bestChromosome);
     }
     lastImprovement = epoch;
 }
 
 void GeneticAlgorithm::evaluatePopulation()
 {
-    fitnesses[0] = evaluateChromozome(0);
+    fitnesses[0] = evaluateChromosome(0);
     auto minIndex = 0;
     auto min = fitnesses[0];
     auto max = fitnesses[0];
@@ -329,7 +329,7 @@ void GeneticAlgorithm::evaluatePopulation()
     // (setting min, max, index)
     std::transform(std::next(indices.begin()), indices.end(),
                    std::next(fitnesses.begin()), [&](auto i) {
-                       auto value = evaluateChromozome(i);
+                       auto value = evaluateChromosome(i);
                        if (value < min) {
                            minIndex = i;
                            min = value;
@@ -342,7 +342,7 @@ void GeneticAlgorithm::evaluatePopulation()
 
     // update best
     if (min < bestValue) {
-        updateBestChromozome(min, minIndex);
+        updateBestChromosome(min, minIndex);
     }
 
     computeSelectionProbabilities(normalizeFitness(min, max));
@@ -351,7 +351,7 @@ void GeneticAlgorithm::evaluatePopulation()
 void GeneticAlgorithm::updateBestFromPopulation()
 {
     std::for_each(indices.begin(), indices.end(),
-                  [&](auto i) { evaluateChromozomeAndUpdateBest(i); });
+                  [&](auto i) { evaluateChromosomeAndUpdateBest(i); });
 }
 
 double GeneticAlgorithm::normalizeFitness(double min, double max)
@@ -379,7 +379,7 @@ void GeneticAlgorithm::computeSelectionProbabilities(double total)
                    });
 }
 
-chromozome GeneticAlgorithm::selectChromozome()
+chromosome GeneticAlgorithm::selectChromosome()
 {
     const auto random = randomDouble(gen);
     for (auto i = 0; i < populationSize; ++i) {
@@ -403,7 +403,7 @@ void GeneticAlgorithm::selectNewPopulation()
                 return selectionProbabilities[i] > selectionProbabilities[j];
             });
 
-        // moving best elitesNumber chromozomes to elites
+        // moving best elitesNumber chromosomes to elites
         std::transform(indices.begin(), elitesEnd, newPopulation.begin(),
                        [this](auto i) { return population[i]; });
 
@@ -414,7 +414,7 @@ void GeneticAlgorithm::selectNewPopulation()
     std::transform(
         std::next(population.begin(), elitesNumber), population.end(),
         std::next(newPopulation.begin(), elitesNumber),
-        [this]([[maybe_unused]] auto& elem) { return selectChromozome(); });
+        [this]([[maybe_unused]] auto& elem) { return selectChromosome(); });
     // Swapping back
     population.swap(newPopulation);
 }
@@ -435,15 +435,16 @@ void GeneticAlgorithm::mutatePopulation()
 {
     // skipping half the elites
     std::for_each(std::next(population.begin(), elitesNumber / 2),
-                  population.end(), [&](auto& x) { mutateChromozome(x); });
+                  population.end(), [&](auto& x) { mutateChromosome(x); });
     // This can be vectorized (std::execution::unseq), and tested if it brings
     // any benefit for such a small population. Might do in the long run.
     // Side effects due to using generator in multiple threads?
 }
 
-void GeneticAlgorithm::mutateChromozome(chromozome& chromozome)
+void GeneticAlgorithm::mutateChromosome(chromosome& chromosome)
 {
-    for (auto bit : chromozome) {
+    // TODO: maybe a faster solution would be to generate x indices to flip
+    for (auto bit : chromosome) {
         if (randomDouble(gen) < mutationProbability) {
             bit.flip();
         }
@@ -453,11 +454,14 @@ void GeneticAlgorithm::mutateChromozome(chromozome& chromozome)
     // methods
 }
 
+// TODO: Try Omax vs Ofast vs O3 vs O2
+
 void GeneticAlgorithm::crossoverPopulationChaotic()
 {
+    // TODO: A crossover strategy in which we reverse the order of crossed over genes
     std::for_each(indices.begin(), indices.end(), [this](auto i) {
         if (randomDouble(gen) < crossoverProbability / 2) {
-            crossoverChromozomes(i, radomChromozome(gen));
+            crossoverChromosomes(i, radomChromosome(gen));
         }
     });
     // should not be parallelized because it has side effects
@@ -470,7 +474,7 @@ void GeneticAlgorithm::crossoverPopulationClassic()
     for (auto i = 0; i < populationSize; ++i) {
         if (randomDouble(gen) < crossoverProbability) {
             if (pair) {
-                crossoverChromozomes(i, pairIndex);
+                crossoverChromosomes(i, pairIndex);
             } else {
                 pairIndex = i;
             }
@@ -490,19 +494,19 @@ void GeneticAlgorithm::crossoverPopulationSorted()
     std::sort(indices.begin(), indices.end(), [this](auto a, auto b) {
         return selectionProbabilities[a] < selectionProbabilities[b];
     });
-    // crossover between first x and last x chromozomes
+    // crossover between first x and last x chromosomes
     // should have taken pairs of 2 instead?
     for (auto i = 0; i < populationSize; ++i) {
         if (selectionProbabilities[indices[i]] > crossoverProbability / 2) {
             break;
         }
-        crossoverChromozomes(indices[i], indices[populationSize - i - 1]);
+        crossoverChromosomes(indices[i], indices[populationSize - i - 1]);
     }
     // reseting indices
     std::iota(indices.begin(), indices.end(), 0);
 }
 
-void GeneticAlgorithm::crossoverChromozomes(std::size_t i, std::size_t j)
+void GeneticAlgorithm::crossoverChromosomes(std::size_t i, std::size_t j)
 {
     // TODO: Maybe we could do crossover by using different operations,
     // for example xor and or nor
@@ -521,20 +525,20 @@ void GeneticAlgorithm::crossoverChromozomes(std::size_t i, std::size_t j)
     // std::swap_ranges(population[i].begin(), end, population[j].begin());
     //
     // this can and might be worth vectorizing for char, because char has
-    // LegacyContiguousIterator and each chromozome has 350 bits
+    // LegacyContiguousIterator and each chromosome has 350 bits
 }
 
 void GeneticAlgorithm::hillclimbPopulation()
 {
     // unsequential execution
     std::for_each(exec::unseq, indices.begin(), indices.end(),
-                  [this](auto index) { hillclimbChromozome(index); });
+                  [this](auto index) { hillclimbChromosome(index); });
     // TODO: test all execution contexts to check if there is any improvement
 }
 
-void GeneticAlgorithm::hillclimbChromozome(std::size_t index)
+void GeneticAlgorithm::hillclimbChromosome(std::size_t index)
 {
-    hillclimbChromozome(population[index], index);
+    hillclimbChromosome(population[index], index);
 }
 
 void GeneticAlgorithm::hillclimbBest()
@@ -545,7 +549,7 @@ void GeneticAlgorithm::hillclimbBest()
     // default encoding and values for current best
 
     auto isFirst = true;
-    auto& best = bestChromozome;
+    auto& best = bestChromosome;
 
     while (true) {
         if (isBinary) {
@@ -558,9 +562,9 @@ void GeneticAlgorithm::hillclimbBest()
         isBinary = not isBinary;
 
         // using 1st index because its free
-        hillclimbChromozome(best, 0);
+        hillclimbChromosome(best, 0);
 
-        auto decoded = decodeChromozome(best);
+        auto decoded = decodeChromosome(best);
         auto aux = decoded;
         // copy used to cache result of rotate operation
         auto ret = function(decoded, aux);
@@ -577,31 +581,31 @@ void GeneticAlgorithm::hillclimbBest()
     }
 }
 
-void GeneticAlgorithm::hillclimbChromozome(chromozome& chromozome,
+void GeneticAlgorithm::hillclimbChromosome(chromosome& chromosome,
                                            std::size_t index)
 {
-    auto best = std::move(chromozome); // moving from chromozome
+    auto best = std::move(chromosome); // moving from chromosome
     applyHillclimbing(best, index);    // doing complex operations in here
-    chromozome = std::move(best);      // moving back to chromozome
+    chromosome = std::move(best);      // moving back to chromosome
 }
 
-void GeneticAlgorithm::applyHillclimbing(chromozome& chromozome,
+void GeneticAlgorithm::applyHillclimbing(chromosome& chromosome,
                                          std::size_t index)
 {
     for (auto progress = true; progress;) {
-        progress = hillclimbingStrategy(chromozome, index);
+        progress = hillclimbingStrategy(chromosome, index);
     }
 }
 
-bool GeneticAlgorithm::firstImprovementHillclimbing(chromozome& chromozome,
+bool GeneticAlgorithm::firstImprovementHillclimbing(chromosome& chromosome,
                                                     std::size_t index)
 {
-    const auto bestValue = evaluateChromozome(chromozome, index);
+    const auto bestValue = evaluateChromosome(chromosome, index);
 
     // this is a std::_Bit_iterator::reference
-    for (auto bit : chromozome) {
+    for (auto bit : chromosome) {
         bit.flip();
-        const auto value = evaluateChromozome(chromozome, index);
+        const auto value = evaluateChromosome(chromosome, index);
         if (value < bestValue) {
             return true;
             // returning before flipping back
@@ -612,51 +616,51 @@ bool GeneticAlgorithm::firstImprovementHillclimbing(chromozome& chromozome,
 }
 
 bool GeneticAlgorithm::firstImprovementRandomHillclimbing(
-    chromozome& chromozome, std::size_t index)
+    chromosome& chromosome, std::size_t index)
 {
     // cannot use member indices to sort them because of concurrency issues
-    const auto bestValue = evaluateChromozome(chromozome, index);
+    const auto bestValue = evaluateChromosome(chromosome, index);
 
     // should we do more or less tries?
-    for (std::size_t tries = 0; tries < chromozome.size(); ++tries) {
+    for (std::size_t tries = 0; tries < chromosome.size(); ++tries) {
         const auto i = randomBitIndex(gen);
-        chromozome[i].flip();
+        chromosome[i].flip();
 
-        const auto value = evaluateChromozome(chromozome, index);
+        const auto value = evaluateChromosome(chromosome, index);
         if (value < bestValue) {
             return true;
             // returning before flipping back
         }
-        chromozome[i].flip();
+        chromosome[i].flip();
     }
     return false;
 }
 
-bool GeneticAlgorithm::bestImprovementHillclimbing(chromozome& chromozome,
+bool GeneticAlgorithm::bestImprovementHillclimbing(chromosome& chromosome,
                                                    std::size_t index)
 {
     // cannot use member indices because of concurrency issues
-    auto bestValue = evaluateChromozome(chromozome, index);
+    auto bestValue = evaluateChromosome(chromosome, index);
     auto bestIndex = 0;
     auto updated = false;
 
-    for (std::size_t i = 0; i < chromozome.size(); ++i) {
-        chromozome[i].flip();
+    for (std::size_t i = 0; i < chromosome.size(); ++i) {
+        chromosome[i].flip();
 
-        const auto value = evaluateChromozome(chromozome, index);
+        const auto value = evaluateChromosome(chromosome, index);
         if (value < bestValue) {
             updated = true;
             bestIndex = i;
             bestValue = value;
         }
 
-        chromozome[i].flip();
+        chromosome[i].flip();
     }
 
     if (not updated) {
         return false;
     }
-    chromozome[bestIndex].flip();
+    chromosome[bestIndex].flip();
     return true;
 }
 
@@ -689,24 +693,24 @@ std::string GeneticAlgorithm::toString() const
 void GeneticAlgorithm::printBest() const
 {
     std::cout << "Best: " << bestValue << '\n';
-    printChromozome(bestChromozome);
+    printChromosome(bestChromosome);
 }
 
-void GeneticAlgorithm::printChromozome(const chromozome& chromozome) const
+void GeneticAlgorithm::printChromosome(const chromosome& chromosome) const
 {
     // TODO: make template for bool
-    const auto decoded = decodeChromozome(chromozome);
+    const auto decoded = decodeChromosome(chromosome);
     for (const auto x : decoded) {
         std::cout << x << ' ';
     }
     std::cout << '\n';
 }
 
-void GeneticAlgorithm::printChromozomeRepr(const chromozome& chromozome) const
+void GeneticAlgorithm::printChromosomeRepr(const chromosome& chromosome) const
 {
-    const auto decoded = decodeChromozome(chromozome);
+    const auto decoded = decodeChromosome(chromosome);
     int i = 0;
-    for (const auto bit : chromozome) {
+    for (const auto bit : chromosome) {
         if (i++ % cst::bitsPerVariable == 0) {
             std::cout << '\n';
             std::cout << decoded[(i - 1) / cst::bitsPerVariable] << '\n';
@@ -720,7 +724,7 @@ void GeneticAlgorithm::printPopulation() const
 {
     std::for_each(
         population.begin(), population.end(),
-        [this](const auto& chromozome) { printChromozome(chromozome); });
+        [this](const auto& chromosome) { printChromosome(chromosome); });
 }
 
 double GeneticAlgorithm::run()
@@ -750,9 +754,9 @@ double GeneticAlgorithm::run()
 void GeneticAlgorithm::initContainers()
 {
     for (auto i = 0; i < populationSize; ++i) {
-        population.push_back(chromozome(bitsPerChromozome, true));
+        population.push_back(chromosome(bitsPerChromosome, true));
         // population will be randomized at each run call
-        newPopulation.push_back(chromozome(bitsPerChromozome, true));
+        newPopulation.push_back(chromosome(bitsPerChromosome, true));
         decodings.push_back(std::vector<double>(dimensions, 0.0));
         auxiliars.push_back(std::vector<double>(dimensions, 0.0));
     }
@@ -782,20 +786,20 @@ void GeneticAlgorithm::initStrategies(CrossoverType crossoverType,
     }();
 
     hillclimbingStrategy =
-        [&]() -> std::function<bool(chromozome&, std::size_t)> {
+        [&]() -> std::function<bool(chromosome&, std::size_t)> {
         if (hillclimbingType == HillclimbingType::FirstImprovement) {
-            return [this](chromozome& chromozome, std::size_t index) {
-                return firstImprovementHillclimbing(chromozome, index);
+            return [this](chromosome& chromosome, std::size_t index) {
+                return firstImprovementHillclimbing(chromosome, index);
             };
         }
         if (hillclimbingType == HillclimbingType::FirstImprovementRandom) {
-            return [this](chromozome& chromozome, std::size_t index) {
-                return firstImprovementRandomHillclimbing(chromozome, index);
+            return [this](chromosome& chromosome, std::size_t index) {
+                return firstImprovementRandomHillclimbing(chromosome, index);
             };
         }
         if (hillclimbingType == HillclimbingType::BestImprovement) {
-            return [this](chromozome& chromozome, std::size_t index) {
-                return bestImprovementHillclimbing(chromozome, index);
+            return [this](chromosome& chromosome, std::size_t index) {
+                return bestImprovementHillclimbing(chromosome, index);
             };
         }
         throw std::runtime_error{"Implement the others"};
@@ -804,8 +808,8 @@ void GeneticAlgorithm::initStrategies(CrossoverType crossoverType,
 
 void GeneticAlgorithm::initDistributions(int populationSize)
 {
-    radomChromozome = std::uniform_int_distribution<>{0, populationSize - 1};
-    randomBitIndex = std::uniform_int_distribution<>{0, bitsPerChromozome - 1};
+    radomChromosome = std::uniform_int_distribution<>{0, populationSize - 1};
+    randomBitIndex = std::uniform_int_distribution<>{0, bitsPerChromosome - 1};
 }
 
 } // namespace ga
