@@ -12,8 +12,10 @@ class FunctionManager
                     bool shiftFlag, bool rotateFlag);
 
     double operator()(std::vector<double>& x, std::vector<double>& aux);
+    double f(std::vector<double>& x, std::vector<double>& aux) const;
 
     std::string toString() const;
+    int count() const;
 
   private:
     std::function<double(std::vector<double>&, std::vector<double>&)>
@@ -22,7 +24,8 @@ class FunctionManager
     std::string functionName;
     std::function<double(std::vector<double>&, std::vector<double>&)> function;
 
-    int functionCalls;
+    int functionCalls = 0;
+    int maxFes;
     std::vector<double> values;
 };
 

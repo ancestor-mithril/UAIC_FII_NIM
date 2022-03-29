@@ -136,6 +136,7 @@ FunctionManager::FunctionManager(const std::string& functionName,
                                  int dimensions, bool shiftFlag,
                                  bool rotateFlag)
     : functionName{functionName}
+    , maxFes{dimensions == 10 ? 200'000 : 1'000'000}
 {
 
     if ((shiftFlag or rotateFlag) and dimensions != 10 and dimensions != 20) {
@@ -157,12 +158,25 @@ std::string FunctionManager::toString() const
     return ss.str();
 }
 
+double FunctionManager::f(std::vector<double>& x, std::vector<double>& aux) const
+{
+    return function(x, aux);
+}
+
+int FunctionManager::count() const
+{
+    return functionCalls;
+}
+
 double
 FunctionManager::operator()(std::vector<double>& x, std::vector<double>& aux)
 {
-    ++functionCalls;
-    auto ret = function(x, aux);
-    if (functionCalls % 1000) {
+    // if (functionCalls++ > maxFes + 1000) {
+    //     std::cerr << functionCalls << " > " << maxFes << '\n';
+    //     throw std::runtime_error{"Too many function calls"};
+    // }
+    auto ret = f(x, aux);
+    if (functionCalls % 2000) {
         values.push_back(ret);
     }
     return ret;

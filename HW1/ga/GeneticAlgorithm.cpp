@@ -42,15 +42,15 @@ GeneticAlgorithm getDefault(const std::string& functionName)
     // TODO: Make tests
     return {0.9,                               // crossoverProbability
             0.005,                             // mutationProbability
-            0.1,                               // hypermutationRate
+            0.025,                               // hypermutationRate
             0.02,                              // elitesPercentage
-            5.0,                               // selectionPressure
+            10.0,                               // selectionPressure
             CrossoverType::Classic,            // crossoverType
-            HillclimbingType::BestImprovement, // hillclimbingType
+            HillclimbingType::FirstImprovementRandom, // hillclimbingType
             cst::populationSize,               // populationSize
             10,                                // dimensions
-            10,                                // stepsToHypermutation
-            5,                                 // encodingChangeRate
+            20,                                // stepsToHypermutation
+            20,                         // encodingChangeRate
             1'000'000,                         // maxNoImprovementSteps
             functionName,
             true,  // applyShift
@@ -561,13 +561,29 @@ void GeneticAlgorithm::hillclimbBest()
         }
         isBinary = not isBinary;
 
-        // using 1st index because its free
-        hillclimbChromosome(best, 0);
+        
+        try {
+            // ??? why does not using copy results in best's erasure when exception is thrown?
+            auto bestCopy = best;
+            hillclimbChromosome(bestCopy, 0);
+            best = bestCopy;
+            // using 1st index because its free
+        } catch(const std::exception& exception) {
+            auto decoded = decodeChromosome(best);
+            auto aux = decoded;
+            auto ret = function.f(decoded, aux);
+            if (ret < bestValue) {
+                bestValue = ret;
+            }
+            std::cout << "Exit" << std::endl;
+            return;
+        }
+        
 
         auto decoded = decodeChromosome(best);
         auto aux = decoded;
         // copy used to cache result of rotate operation
-        auto ret = function(decoded, aux);
+        auto ret = function.f(decoded, aux);
         if (ret < bestValue) {
             bestValue = ret;
         }
@@ -733,7 +749,8 @@ double GeneticAlgorithm::run()
     // hillclimbPopulation();
     updateBestFromPopulation();
 
-    for (epoch = 0; epoch < maxSteps / populationSize; ++epoch) {
+    for (epoch = 0; epoch < maxSteps / populationSize - 10; ++epoch) {
+        // std::cout << "Epoch: " << epoch << ' ' << function.count() << '\n';
         if (stop()) {
             break;
         }
@@ -746,7 +763,7 @@ double GeneticAlgorithm::run()
     // hillclimbPopulation();
     // printPopulation();
     updateBestFromPopulation();
-    // hillclimbBest();
+    hillclimbBest();
     // printBest();
     return bestValue;
 }

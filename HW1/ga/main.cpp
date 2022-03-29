@@ -27,10 +27,11 @@ int main(int argc, char** argv)
             return 0;
         }
 
-        std::ofstream fout{"experiments/" + std::string{argv[1]}};
-        for (auto i = 1; i < 30; ++i) {
+        std::ofstream fout{"experiments/10/3/" + std::string{argv[1]}};
+        for (auto i = 0; i < 30; ++i) {
             auto ga = ga::getDefault(std::string{argv[1]});
             fout << ga.run() << '\n';
+            std::cout << i << '\n';
         }
     }
 
