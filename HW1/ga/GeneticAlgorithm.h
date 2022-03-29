@@ -42,6 +42,7 @@ class GeneticAlgorithm
     double run();
     void printBest() const; // TODO: also add stream to print to
     std::string toString() const;
+    int count() const;
 
   private:
     void randomizePopulationAndInitBest();

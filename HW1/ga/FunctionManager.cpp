@@ -135,8 +135,7 @@ std::vector<std::size_t> readShuffle(std::size_t dimensions, int index)
 FunctionManager::FunctionManager(const std::string& functionName,
                                  int dimensions, bool shiftFlag,
                                  bool rotateFlag)
-    : functionName{functionName}
-    , maxFes{dimensions == 10 ? 200'000 : 1'000'000}
+    : functionName{functionName}, maxFes{dimensions == 10 ? 200'000 : 1'000'000}
 {
 
     if ((shiftFlag or rotateFlag) and dimensions != 10 and dimensions != 20) {
@@ -158,7 +157,8 @@ std::string FunctionManager::toString() const
     return ss.str();
 }
 
-double FunctionManager::f(std::vector<double>& x, std::vector<double>& aux) const
+double
+FunctionManager::f(std::vector<double>& x, std::vector<double>& aux) const
 {
     return function(x, aux);
 }
@@ -171,14 +171,15 @@ int FunctionManager::count() const
 double
 FunctionManager::operator()(std::vector<double>& x, std::vector<double>& aux)
 {
-    // if (functionCalls++ > maxFes + 1000) {
+    // if (functionCalls > maxFes + 1000) {
     //     std::cerr << functionCalls << " > " << maxFes << '\n';
     //     throw std::runtime_error{"Too many function calls"};
     // }
     auto ret = f(x, aux);
-    if (functionCalls % 2000) {
-        values.push_back(ret);
-    }
+    // if (functionCalls % 2000) {
+    //     values.push_back(ret);
+    // }
+    ++functionCalls;
     return ret;
 }
 

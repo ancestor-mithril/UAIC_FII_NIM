@@ -28,8 +28,10 @@ void shiftfunc(std::vector<double>& x, const vector_begin shiftBegin)
 void rotatefunc(std::vector<double>& x, std::vector<double>& aux,
                 const matrix_begin rotateBegin)
 {
-    // assuming x.size() == rotate.size() == rotate[0].size() == aux.size()
-    std::fill(aux.begin(), aux.end(), 0.0);
+    // assuming x.size() == rotate.size() == rotate[0].size() <= aux.size()
+    const auto n = x.size();
+    const auto auxBegin = aux.begin();
+    std::fill(auxBegin, std::next(auxBegin, n), 0.0);
     for (std::size_t i = 0; i < x.size(); ++i) {
         for (std::size_t j = 0; j < x.size(); ++j) {
             aux[i] += x[j] * (*std::next(rotateBegin, i))[j];
@@ -518,13 +520,11 @@ hf01(std::vector<double>& x, std::vector<double>& aux,
     std::vector<double> z1{x.begin(), margin_1};
     std::vector<double> z2{margin_1, margin_2};
     std::vector<double> z3{margin_2, x.end()};
-    std::vector<double> aux1(z1.size(), 0.0);
-    std::vector<double> aux2(z2.size(), 0.0);
-    std::vector<double> aux3(z3.size(), 0.0);
 
-    return bent_cigar_func(z1, aux1, shift, rotate, false, false) +
-           hgbat_func(z2, aux2, shift, rotate, false, false) +
-           rastrigin_func(z3, aux3, shift, rotate, false, false);
+    // passing the entire aux vector becuse it's faster
+    return bent_cigar_func(z1, aux, shift, rotate, false, false) +
+           hgbat_func(z2, aux, shift, rotate, false, false) +
+           rastrigin_func(z3, aux, shift, rotate, false, false);
 }
 
 double

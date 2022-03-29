@@ -40,18 +40,18 @@ decodeGrayVariable(const chromosome_cit begin, const chromosome_cit end)
 GeneticAlgorithm getDefault(const std::string& functionName)
 {
     // TODO: Make tests
-    return {0.9,                               // crossoverProbability
-            0.005,                             // mutationProbability
-            0.025,                               // hypermutationRate
-            0.02,                              // elitesPercentage
-            10.0,                               // selectionPressure
-            CrossoverType::Classic,            // crossoverType
+    return {0.9,                                      // crossoverProbability
+            0.005,                                    // mutationProbability
+            0.025,                                    // hypermutationRate
+            0.02,                                     // elitesPercentage
+            10.0,                                     // selectionPressure
+            CrossoverType::Classic,                   // crossoverType
             HillclimbingType::FirstImprovementRandom, // hillclimbingType
-            cst::populationSize,               // populationSize
-            10,                                // dimensions
-            20,                                // stepsToHypermutation
-            20,                         // encodingChangeRate
-            1'000'000,                         // maxNoImprovementSteps
+            cst::populationSize,                      // populationSize
+            10,                                       // dimensions
+            20,                                       // stepsToHypermutation
+            7,                                        // encodingChangeRate
+            1'000'000,                                // maxNoImprovementSteps
             functionName,
             true,  // applyShift
             true}; // applyRotation
@@ -458,7 +458,8 @@ void GeneticAlgorithm::mutateChromosome(chromosome& chromosome)
 
 void GeneticAlgorithm::crossoverPopulationChaotic()
 {
-    // TODO: A crossover strategy in which we reverse the order of crossed over genes
+    // TODO: A crossover strategy in which we reverse the order of crossed over
+    // genes
     std::for_each(indices.begin(), indices.end(), [this](auto i) {
         if (randomDouble(gen) < crossoverProbability / 2) {
             crossoverChromosomes(i, radomChromosome(gen));
@@ -561,14 +562,14 @@ void GeneticAlgorithm::hillclimbBest()
         }
         isBinary = not isBinary;
 
-        
         try {
-            // ??? why does not using copy results in best's erasure when exception is thrown?
+            // ??? why does not using copy results in best's erasure when
+            // exception is thrown?
             auto bestCopy = best;
             hillclimbChromosome(bestCopy, 0);
             best = bestCopy;
             // using 1st index because its free
-        } catch(const std::exception& exception) {
+        } catch (const std::exception& exception) {
             auto decoded = decodeChromosome(best);
             auto aux = decoded;
             auto ret = function.f(decoded, aux);
@@ -578,7 +579,6 @@ void GeneticAlgorithm::hillclimbBest()
             std::cout << "Exit" << std::endl;
             return;
         }
-        
 
         auto decoded = decodeChromosome(best);
         auto aux = decoded;
@@ -699,6 +699,11 @@ void GeneticAlgorithm::adapt()
         }
         isBinary = not isBinary;
     }
+}
+
+int GeneticAlgorithm::count() const
+{
+    return function.count();
 }
 
 std::string GeneticAlgorithm::toString() const

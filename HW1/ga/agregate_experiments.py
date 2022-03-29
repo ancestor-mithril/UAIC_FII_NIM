@@ -100,4 +100,19 @@ def analyze_experiments():
     print("encodingChangeRate")
     print(encodingChangeRate)
 
-analyze_experiments()
+
+def print_statistics():
+    import statistics
+    f = open("../statistics/1.txt", "w")
+    path = "../experiments/10/2"
+    for file in os.listdir(path):
+        vals = list(map(float, open(f"{path}/{file}", "r").readlines()))
+        f.write(f"{file}")
+        f.write(f" {statistics.mean(vals):.2f}")
+        f.write(f" {statistics.median(vals):.2f}")
+        f.write(f" {statistics.stdev(vals):.2f}")
+        f.write(f" {min(vals):.2f}")
+        f.write(f" {max(vals):.2f}\n")
+
+
+print_statistics()
