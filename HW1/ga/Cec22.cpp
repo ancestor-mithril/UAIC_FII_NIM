@@ -511,8 +511,6 @@ hf01(std::vector<double>& x, std::vector<double>& aux,
     const auto range = std::ceil(0.4 * x.size());
     const auto margin_1 = std::next(x.begin(), range); // 0.4
     const auto margin_2 = std::next(margin_1, range);  // another 0.4
-    const auto aux_margin_1 = std::next(aux.begin(), range);
-    const auto aux_margin_2 = std::next(margin_1, range);
 
     // TODO: Find a way to not create new vectors again
     // might be hard because we would need to modify everithing

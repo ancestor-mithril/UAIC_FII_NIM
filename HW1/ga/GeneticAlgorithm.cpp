@@ -48,9 +48,9 @@ GeneticAlgorithm getDefault(const std::string& functionName)
             CrossoverType::Classic,                   // crossoverType
             HillclimbingType::FirstImprovementRandom, // hillclimbingType
             cst::populationSize,                      // populationSize
-            10,                                       // dimensions
+            20,                                       // dimensions
             20,                                       // stepsToHypermutation
-            7,                                        // encodingChangeRate
+            50,                                        // encodingChangeRate
             1'000'000,                                // maxNoImprovementSteps
             functionName,
             true,  // applyShift
@@ -565,9 +565,10 @@ void GeneticAlgorithm::hillclimbBest()
         try {
             // ??? why does not using copy results in best's erasure when
             // exception is thrown?
-            auto bestCopy = best;
-            hillclimbChromosome(bestCopy, 0);
-            best = bestCopy;
+            // auto bestCopy = best;
+            // hillclimbChromosome(bestCopy, 0);
+            // best = bestCopy;
+            hillclimbChromosome(best, 0);
             // using 1st index because its free
         } catch (const std::exception& exception) {
             auto decoded = decodeChromosome(best);
@@ -768,7 +769,7 @@ double GeneticAlgorithm::run()
     // hillclimbPopulation();
     // printPopulation();
     updateBestFromPopulation();
-    hillclimbBest();
+    // hillclimbBest();
     // printBest();
     return bestValue;
 }

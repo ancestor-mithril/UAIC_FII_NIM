@@ -104,15 +104,21 @@ def analyze_experiments():
 def print_statistics():
     import statistics
     f = open("../statistics/1.txt", "w")
-    path = "../experiments/10/2"
+    path = "../experiments/20/2"
     for file in os.listdir(path):
         vals = list(map(float, open(f"{path}/{file}", "r").readlines()))
+        if len(vals) == 0:
+            continue
+        vals1 = vals[::2]
+        vals2 = list(map(int, vals[1::2]))
         f.write(f"{file}")
-        f.write(f" {statistics.mean(vals):.2f}")
-        f.write(f" {statistics.median(vals):.2f}")
-        f.write(f" {statistics.stdev(vals):.2f}")
-        f.write(f" {min(vals):.2f}")
-        f.write(f" {max(vals):.2f}\n")
+        f.write(f" {statistics.mean(vals1):.2f}")
+        f.write(f" {statistics.median(vals1):.2f}")
+        f.write(f" {statistics.stdev(vals1):.2f}")
+        f.write(f" {min(vals1):.2f}")
+        f.write(f" {max(vals1):.2f}")
+        f.write("\n")
+        # f.write(f" {statistics.mean(vals2):.2f}\n")
 
 
 print_statistics()
