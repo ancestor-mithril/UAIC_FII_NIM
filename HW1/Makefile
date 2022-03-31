@@ -2,6 +2,7 @@ BUILDDIR=build
 APP=program
 OPT=Ofast # Check O2 against Ofast.
 CMAKE_CXX_FLAGS=-std=c++20 -${OPT} -Wall -Wextra -Wpedantic
+COMPILER=g++
 
 cxx:
 	export CXX=g++
@@ -25,11 +26,11 @@ clean:
 
 rel1: builddir cxx
 	cd ${BUILDDIR} \
-	&& g++ ${CMAKE_CXX_FLAGS} -c ../ga/Cec22.cpp \
-	&& g++ ${CMAKE_CXX_FLAGS} -c ../ga/GeneticAlgorithm.cpp \
-	&& g++ ${CMAKE_CXX_FLAGS} -c ../ga/FunctionManager.cpp \
-	&& g++ ${CMAKE_CXX_FLAGS} -c ../ga/main.cpp \
-	&& g++ ${CMAKE_CXX_FLAGS} Cec22.o FunctionManager.o GeneticAlgorithm.o main.o -o ${APP}.exe
+	&& ${COMPILER} ${CMAKE_CXX_FLAGS} -c ../ga/Cec22.cpp \
+	&& ${COMPILER} ${CMAKE_CXX_FLAGS} -c ../ga/GeneticAlgorithm.cpp \
+	&& ${COMPILER} ${CMAKE_CXX_FLAGS} -c ../ga/FunctionManager.cpp \
+	&& ${COMPILER} ${CMAKE_CXX_FLAGS} -c ../ga/main.cpp \
+	&& ${COMPILER} ${CMAKE_CXX_FLAGS} Cec22.o FunctionManager.o GeneticAlgorithm.o main.o -o ${APP}.exe
 
 main: builddir cxx  # debug only
 	cd ${BUILDDIR} \
