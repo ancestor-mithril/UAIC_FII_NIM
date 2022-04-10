@@ -1,5 +1,9 @@
 #include "FunctionManager.h"
+
 #include "../cec22/Cec22.h"
+#include "../utils/Constants.h"
+#include "../utils/Utils.h"
+#include "CacheLayer.h"
 
 #include <filesystem>
 #include <fstream>
@@ -223,14 +227,16 @@ initFunction(const std::string& functionName, int dimensions, bool shiftFlag,
     throw std::runtime_error{"Function "s + functionName + " not found."s};
 }
 
+auto cache = cache_layer::CacheLayer{}.cache;
+
 } // namespace
 
 FunctionManager::FunctionManager(std::string_view function, int dimensions,
                                  bool shiftFlag, bool rotateFlag)
     // clang-format off
     : functionName{function}
-    , dimensions{dimensions}
     , maxFes{dimensions == 10 ? 200'000 : 1'000'000}
+    , epsilon{dimensions == 10 ? 1e-6 : 1e-5}
     , function{initFunction(functionName, dimensions, shiftFlag, rotateFlag)}
 // clang-format on
 {
@@ -238,6 +244,49 @@ FunctionManager::FunctionManager(std::string_view function, int dimensions,
         throw std::runtime_error{
             "Can't use rotate or shift for dimensions other than 10 or 20"};
     }
+}
+
+double
+FunctionManager::operator()(std::vector<double>& x, std::vector<double>& aux)
+{
+    auto it = cache.lower_bound(x);
+    if (it == cache.end()) {
+        // iterator hint is useless in this case
+        return callFunctionAndUpdateCache(x, aux, it);
+    }
+
+    // Current solution checks if the alphabetically closest key is also close
+    // in distance. This does not take into account that there could be other
+    // vectors closer in distance but situated somewhere else in the cache.
+    if (utils::l2distance(x, it->first) < epsilon) {
+        // Both 1e-5 or 1e-6 are pretty small. The vectors cannot deviate too
+        // much in order to trigger cache hit.
+        return it->second;
+    }
+
+    // iterator hint is usefull in this case
+    return callFunctionAndUpdateCache(x, aux, it);
+}
+
+double FunctionManager::callFunctionAndUpdateCache(
+    std::vector<double>& x, std::vector<double>& aux,
+    std::map<std::vector<double>, double>::const_iterator it)
+{
+    auto value = callFunction(x, aux);
+    // this makes copy
+
+    cache.insert(it, {x, value});
+    return value;
+}
+
+double
+FunctionManager::callFunction(std::vector<double>& x, std::vector<double>& aux)
+{
+    ++functionCalls;
+    if (functionCalls > maxFes) {
+        throw std::out_of_range{"Function call out of range"};
+    }
+    return function(x, aux);
 }
 
 } // namespace function_layer

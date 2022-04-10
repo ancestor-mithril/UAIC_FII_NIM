@@ -15,6 +15,9 @@ format:
 	clang-format -i ./pso/cec22/Cec22.h
 	clang-format -i ./pso/functions/FunctionManager.h
 	clang-format -i ./pso/functions/FunctionManager.cpp
+	clang-format -i ./pso/functions/CacheLayer.h
+	clang-format -i ./pso/utils/Utils.h
+	clang-format -i ./pso/utils/Constants.h
 	clang-format -i ./pso/main.cpp
 
 release: builddir
