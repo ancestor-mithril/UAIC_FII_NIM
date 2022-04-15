@@ -504,16 +504,25 @@ double rastrigin_func(std::vector<double>& x, std::vector<double>& aux,
 double do_schwefel_func(const VectorRange& x)
 {
     const auto n = std::distance(x.begin, x.end);
-    return 4.189828872724338e+002 * n -
-           std::accumulate(x.begin, x.end, 0.0, [](auto f, auto elem) {
+    return 4.189828872724338e+002 * n +
+           std::accumulate(x.begin, x.end, 0.0, [=](auto f, auto elem) {
                const auto xi = elem + 4.209687462275036e+002;
-               return f + xi * std::sin(std::sqrt(xi));
-               // here it should be sin(sqrt(abs(xi)))
-               // however, our xi are from (-100, 100) + 420, therefore they are
-               // always positive
+               if (xi > 500.0) {
+                   const auto temp1 =
+                       (500.0 - std::fmod(xi, 500)) *
+                       std::sin(std::sqrt(500.0 - std::fmod(xi, 500)));
+                   const auto temp2 = (xi - 500.0) / 100.0;
+                   return f - temp1 + temp2 * temp2 / n;
+               } else if (xi < -500.0) {
+                   const auto temp1 =
+                       (-500.0 + std::fmod(std::fabs(xi), 500)) *
+                       std::sin(
+                           std::sqrt(500.0 - std::fmod(std::fabs(xi), 500)));
+                   const auto temp2 = (xi + 500.0) / 100.0;
+                   return f - temp1 + temp2 * temp2 / n;
+               } // else
+               return f - xi * std::sin(std::sqrt(std::fabs(xi)));
            });
-    // implementation is different than the original one
-    // but it's better and clearer
 }
 
 double
@@ -699,7 +708,6 @@ hf02(std::vector<double>& x, std::vector<double>& aux,
      const std::vector<std::size_t>& indices, bool shiftFlag, bool rotateFlag)
 {
     // [0.1, 0.2, 0.2, 0.2, 0.1, 0.2]
-    // ??? omega = [10,20,30]. Check what's this and remove
     shiftRotateTransform(x, aux, shift, rotate, 1.0, shiftFlag, rotateFlag);
     applyPermutation(x, aux, indices);
 

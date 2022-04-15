@@ -45,6 +45,7 @@ class PSO
     function_layer::FunctionManager functionManager;
 
     std::vector<std::vector<double>> population;
+    std::vector<std::vector<double>> population2;
     std::vector<std::vector<double>> aux;
     std::vector<std::vector<double>> populationVelocity;
     std::vector<std::vector<double>> populationPastBests;

@@ -29,11 +29,12 @@ void randomizeVector(std::vector<double>& v,
 PSO getDefault(std::string_view functionName, int dimensions)
 {
     return PSO{
-        functionName, dimensions,
+        functionName,
+        dimensions,
         100,  // populationSize
-        0.8,  // inertia
-        0.5,  // cognition
-        0.3,  // social
+        0.3,  // inertia
+        3,    // cognition
+        1,    // social
         true, // augment
         true, // shiftFlag
         true  // rotateFlag
@@ -82,6 +83,7 @@ PSO::PSO(std::string_view functionName,
             globalBest = population[i];
         }
     }
+    population2 = population;
 }
 
 bool PSO::stop() const
@@ -98,7 +100,8 @@ double PSO::run()
     }
     std::cout << "Epochs done: " << currentEpoch << std::endl;
     std::cout << "Cache hits: " << functionManager.hitCount() << std::endl;
-    std::cout << "Least difference higher than epsilon: " << functionManager.getMinimum() << std::endl;
+    std::cout << "Least difference higher than epsilon: "
+              << functionManager.getMinimum() << std::endl;
     return globalBestEval;
 }
 
@@ -119,13 +122,16 @@ void PSO::runInternal()
 
 void PSO::updateBest(int i)
 {
-    const auto current = functionManager(population[i], aux[i]);
+    std::copy(population[i].begin(), population[i].end(),
+              population2[i].begin());
+    const auto current = functionManager(
+        population2[i], aux[i]); // calling function with copied value
     if (current < populationPastBestEval[i]) {
         populationPastBestEval[i] = current;
         populationPastBests[i] = population[i];
 
         if (current < globalBestEval) {
-            std::cout << "BEST: " << current << '\n';
+            // std::cout << "BEST: " << current << '\n';
             globalBestEval = current;
             globalBest = population[i];
 

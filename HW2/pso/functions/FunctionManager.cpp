@@ -280,7 +280,6 @@ double FunctionManager::callFunctionAndUpdateCache(
 {
     auto value = callFunction(x, aux);
     // this makes copy
-
     cache.insert(it, {x, value});
     return value;
 }
