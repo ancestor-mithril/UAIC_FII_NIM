@@ -249,6 +249,8 @@ FunctionManager::FunctionManager(std::string_view function, int dimensions,
 double
 FunctionManager::operator()(std::vector<double>& x, std::vector<double>& aux)
 {
+    // TODO: Add searching strategy (verify all, find, lowe_bound, between lower
+    // and upper bound)
     auto it = cache.lower_bound(x);
     if (it == cache.end()) {
         // iterator hint is useless in this case
@@ -258,10 +260,14 @@ FunctionManager::operator()(std::vector<double>& x, std::vector<double>& aux)
     // Current solution checks if the alphabetically closest key is also close
     // in distance. This does not take into account that there could be other
     // vectors closer in distance but situated somewhere else in the cache.
-    if (utils::l2distance(x, it->first) < epsilon) {
+    auto value = utils::l2distance(x, it->first);
+    if (value < epsilon) {
+        ++cacheHits;
         // Both 1e-5 or 1e-6 are pretty small. The vectors cannot deviate too
         // much in order to trigger cache hit.
         return it->second;
+    } else if (value < minimum) {
+        minimum = value;
     }
 
     // iterator hint is usefull in this case

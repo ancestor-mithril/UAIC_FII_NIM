@@ -3,6 +3,7 @@
 
 namespace cec22 {
 // Minimum for these functions is 0 in unshifted and not rotated [0]n
+// ?? except for composition functions
 
 // Ackley's
 double ackley_func(std::vector<double>& x, std::vector<double>& aux,

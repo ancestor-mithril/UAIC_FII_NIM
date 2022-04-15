@@ -5,6 +5,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <limits>
 
 namespace function_layer {
 
@@ -15,9 +16,17 @@ class FunctionManager
                     bool shiftFlag, bool rotateFlag);
 
     double operator()(std::vector<double>& x, std::vector<double>& aux);
-    int count() const
+    int missCount() const
     {
         return functionCalls;
+    }
+    int hitCount() const
+    {
+        return cacheHits;
+    }
+    double getMinimum() const
+    {
+        return minimum;
     }
 
   private:
@@ -30,7 +39,9 @@ class FunctionManager
     const std::string functionName;
     const int maxFes;
     const double epsilon; // Maybe this should be dinamically adjusted
+    double minimum = std::numeric_limits<double>::infinity();
     int functionCalls = 0;
+    int cacheHits = 0;
 
     std::function<double(std::vector<double>&, std::vector<double>&)> function;
 };

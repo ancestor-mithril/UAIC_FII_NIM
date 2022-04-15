@@ -18,14 +18,17 @@ format:
 	clang-format -i ./pso/functions/CacheLayer.h
 	clang-format -i ./pso/utils/Utils.h
 	clang-format -i ./pso/utils/Constants.h
+	clang-format -i ./pso/pso/PSO.h
+	clang-format -i ./pso/pso/PSO.cpp
 	clang-format -i ./pso/main.cpp
 
 release: builddir
 	cd ${BUILDDIR} \
 	&& ${GCC} ${CMAKE_CXX_FLAGS} -c ../pso/cec22/Cec22.cpp \
 	&& ${GCC} ${CMAKE_CXX_FLAGS} -c ../pso/functions/FunctionManager.cpp \
+	&& ${GCC} ${CMAKE_CXX_FLAGS} -c ../pso/pso/PSO.cpp \
 	&& ${GCC} ${CMAKE_CXX_FLAGS} -c ../pso/main.cpp \
-	&& ${GCC} ${CMAKE_CXX_FLAGS} Cec22.o main.o -o ${APP}.exe
+	&& ${GCC} ${CMAKE_CXX_FLAGS} Cec22.o FunctionManager.o PSO.o main.o -o ${APP}.exe
 
 run: release
 	./${BUILDDIR}/${APP}.exe
