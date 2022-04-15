@@ -1,6 +1,6 @@
 BUILDDIR=build
 APP=app
-OPT=Ofast
+OPT=O2
 CMAKE_CXX_FLAGS=-std=c++20 -${OPT} -Wall -Wextra -Wpedantic
 GCC=g++
 
@@ -29,3 +29,6 @@ release: builddir
 
 run: release
 	./${BUILDDIR}/${APP}.exe
+
+gdb: release # TODO: use debug
+	gdb ./${BUILDDIR}/${APP}.exe

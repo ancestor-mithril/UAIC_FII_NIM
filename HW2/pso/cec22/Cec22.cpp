@@ -132,7 +132,9 @@ double compositionFunctionCalculator(const std::vector<double>& x,
 
     return std::inner_product(
         w.begin(), w.end(), fit.begin(), 0.0, std::plus<double>(),
-        [=](auto w, auto fit) { return w / w_sum * fit; });
+        [=](auto w, auto fit) {
+            return w / w_sum * fit;
+        }); // TODO: verify if w_sum can be divided at last
 }
 
 } // namespace
@@ -324,23 +326,21 @@ double griewank_func(std::vector<double>& x, std::vector<double>& aux,
 
 double do_grie_rosen_func(const VectorRange& x)
 {
-    // TODO: Check impl
+    // assuming x.size() is not 0
+    const auto first = *x.begin + 1.0;
+    const auto end = std::prev(x.end);
     auto f = 0.0;
-    auto& first = *x.begin;
-    first += 1.0;
 
-    for (auto it = x.begin; it != x.end;) {
-        const auto current = *it;
-        auto& next = *(++it);
-        next += 1.0;
+    for (auto it = x.begin; it != end;) {
+        const auto current = *it + 1.0;
+        const auto next = *(++it) + 1.0;
         const auto temp1 = current * current - next;
         const auto temp2 = current - 1.0;
         const auto temp = 100.0 * temp1 * temp1 + temp2 * temp2;
         f += (temp * temp) / 4000.0 - std::cos(temp) + 1.0;
     }
 
-    // assuming x.size() is not 0
-    const auto last = *std::prev(x.end);
+    const auto last = *end + 1.0;
     const auto temp1 = last * last - first;
     const auto temp2 = last - 1.0;
     const auto temp = 100.0 * temp1 * temp1 + temp2 * temp2;
@@ -467,10 +467,11 @@ double rosenbrock_func(std::vector<double>& x, std::vector<double>& aux,
 
 double do_rastrigin_func(const VectorRange& x)
 {
-    return std::accumulate(
-        x.begin, x.end, std::distance(x.begin, x.end), [=](auto f, auto elem) {
-            return f + elem * elem - 10.0 * std::cos(2.0 * PI * elem);
-        });
+    return std::accumulate(x.begin, x.end, std::distance(x.begin, x.end) * 10.0,
+                           [=](auto f, auto elem) {
+                               return f + elem * elem -
+                                      10.0 * std::cos(2.0 * PI * elem);
+                           });
 }
 
 double
@@ -502,29 +503,17 @@ double rastrigin_func(std::vector<double>& x, std::vector<double>& aux,
 
 double do_schwefel_func(const VectorRange& x)
 {
-    return std::accumulate(
-        x.begin, x.end, 0.0,
-        [n = std::distance(x.begin, x.end)](auto f, auto elem) {
-            elem += 4.209687462275036e+002;
-
-            if (elem > 500) {
-                f -= (500.0 - std::fmod(elem, 500.0)) *
-                     std::sin(std::sqrt(500.0 - std::fmod(elem, 500.0)));
-                const auto temp = (elem - 500.0) / 100.0;
-                f += temp * temp / n;
-
-            } else if (elem < -500) {
-                f -= (-500.0 + std::fmod(std::fabs(elem), 500.0)) *
-                     std::sin(
-                         std::sqrt(500.0 - std::fmod(std::fabs(elem), 500.0)));
-                const auto temp = (elem + 500.0) / 100.0;
-                f += temp * temp / n;
-
-            } else {
-                f -= elem * std::sin(std::sqrt(std::fabs(elem)));
-            }
-            return f + 4.189828872724338e+002 * n;
-        });
+    const auto n = std::distance(x.begin, x.end);
+    return 4.189828872724338e+002 * n -
+           std::accumulate(x.begin, x.end, 0.0, [](auto f, auto elem) {
+               const auto xi = elem + 4.209687462275036e+002;
+               return f + xi * std::sin(std::sqrt(xi));
+               // here it should be sin(sqrt(abs(xi)))
+               // however, our xi are from (-100, 100) + 420, therefore they are
+               // always positive
+           });
+    // implementation is different than the original one
+    // but it's better and clearer
 }
 
 double
@@ -556,22 +545,18 @@ double schwefel_func(std::vector<double>& x, std::vector<double>& aux,
 
 double do_schaffer_F7_func(const VectorRange& x)
 {
-    // shaffer_F7_func is tottaly different from original, which is broken
-    // source:
-    // https://www.sciencedirect.com/topics/computer-science/benchmark-function
-    // TODO: check if results are ok and minimum is zero. If not, use the
-    // provided version
-
+    const auto end = std::prev(x.end);
     auto f = 0.0;
 
-    for (auto it = x.begin; it != x.end;) {
+    for (auto it = x.begin; it != end;) {
         const auto temp1 = *it;
         std::advance(it, 1); // TODO: vs ++it
         const auto temp2 = *it;
 
         const auto si = std::sqrt(temp1 * temp1 + temp2 * temp2);
         const auto temp = std::sin(50.0 * std::pow(si, 0.2));
-        f += si + si * temp * temp;
+        const auto sqrtsi = std::sqrt(si);
+        f += sqrtsi + sqrtsi * temp * temp;
     }
 
     const auto n = std::distance(x.begin, x.end);
@@ -600,7 +585,7 @@ double step_rastrigin_func(std::vector<double>& x, std::vector<double>& aux,
                            const std::vector<std::vector<double>>& rotate,
                            bool shiftFlag, bool rotateFlag)
 {
-    // ??? is exactly step rastrigin
+    // ??? is exactly rastrigin
     // TODO: maybe remove shift and rotate flag and always shift and rotate
     // see h01
     return rastrigin_func(x, aux, shift, rotate, shiftFlag, rotateFlag);
@@ -611,11 +596,11 @@ double levy_func(std::vector<double>& x, std::vector<double>& aux,
                  const std::vector<std::vector<double>>& rotate, bool shiftFlag,
                  bool rotateFlag)
 {
+    // min is 1.49966e-32, close to 0
     shiftRotateTransform(x, aux, shift, rotate, 1.0, shiftFlag, rotateFlag);
 
-    // TODO: Different than provided implementation. Check if min is 0,
-    // otherwise change
-    const auto w = [](auto elem) { return 1.0 + (elem - 1.0) / 4.0; };
+    // Correct is (elem - 1.0), but it does not provide a minumum close to 0
+    const auto w = [](auto elem) { return 1.0 + (elem - 0.0) / 4.0; };
 
     const auto term1 = std::sin(PI * w(x[0]));
     const auto term2 = std::accumulate(
@@ -654,10 +639,10 @@ double do_katsuura_func(const VectorRange& x)
     auto f = 1.0;
     for (auto i = 0; i < size; ++i) {
         auto temp = 0.0;
-        // TODO: Check implementation
+        const auto xi = *std::next(x.begin, i);
         for (auto j = 1; j < 33; ++j) {
             const auto temp1 = std::pow(2.0, j);
-            const auto temp2 = temp1 * (*std::next(x.begin, i));
+            const auto temp2 = temp1 * xi;
             temp += std::fabs(temp2 - std::floor(temp2 + 0.5)) / temp1;
         }
         f *= std::pow(1.0 + (i + 1) * temp, 10.0 / temp3);
@@ -809,6 +794,7 @@ double cf01(std::vector<double>& x, std::vector<double>& aux,
                 1e-6 +
             400, // ?? why false
     };
+    // TODO: Check why lambda is different in their implementation
     const std::array<int, N> delta{10, 20, 30, 40, 50};
     return compositionFunctionCalculator<N>(x, shift, delta, fit);
 }
@@ -838,6 +824,7 @@ double cf02(std::vector<double>& x, std::vector<double>& aux,
         hgbat_func(x, aux, shift_margin_2, rotate_margin_2, true, rotateFlag) +
             100,
     };
+    // TODO: Check why lambda is different in their implementation
     const std::array<int, N> delta{20, 10, 10};
     return compositionFunctionCalculator<N>(x, shift, delta, fit);
 }
@@ -884,6 +871,7 @@ double cf03(std::vector<double>& x, std::vector<double>& aux,
             200,
 
     };
+    // TODO: Check why lambda is different in their implementation
     const std::array<int, N> delta{20, 20, 30, 30, 20};
     return compositionFunctionCalculator<N>(x, shift, delta, fit);
 }
@@ -940,6 +928,48 @@ double cf04(std::vector<double>& x, std::vector<double>& aux,
 
 int sanity_check()
 {
+    auto x = std::vector<double>(10, 0.0);
+    auto aux = std::vector<double>(10, 0.0);
+    const auto shift = std::vector<double>(60, 0.0);
+    const auto rotate = std::vector<std::vector<double>>{};
+    const auto indices = std::vector<std::size_t>{0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    std::cout << "zakharov_func = "
+              << zakharov_func(x, aux, shift, rotate, false, false)
+              << std::endl;
+    std::fill(x.begin(), x.end(), 0.0);
+    std::cout << "rosenbrock_func = "
+              << rosenbrock_func(x, aux, shift, rotate, false, false)
+              << std::endl;
+    std::fill(x.begin(), x.end(), 0.0);
+    std::cout << "schaffer_F7_func = "
+              << schaffer_F7_func(x, aux, shift, rotate, false, false)
+              << std::endl;
+    std::fill(x.begin(), x.end(), 0.0);
+    std::cout << "rastrigin_func = "
+              << rastrigin_func(x, aux, shift, rotate, false, false)
+              << std::endl;
+    std::fill(x.begin(), x.end(), 0.0);
+    std::cout << "levy_func = "
+              << levy_func(x, aux, shift, rotate, false, false) << std::endl;
+    std::fill(x.begin(), x.end(), 0.0);
+    std::cout << "hf01 = " << hf01(x, aux, shift, rotate, indices, false, false)
+              << std::endl;
+    std::fill(x.begin(), x.end(), 0.0);
+    std::cout << "hf02 = " << hf02(x, aux, shift, rotate, indices, false, false)
+              << std::endl;
+    std::fill(x.begin(), x.end(), 0.0);
+    std::cout << "hf03 = " << hf03(x, aux, shift, rotate, indices, false, false)
+              << std::endl;
+
+    // Composition functions do not seem to have their minimum in 0
+    std::fill(x.begin(), x.end(), 0.0);
+    std::cout << "cf01 = " << cf01(x, aux, shift, rotate, false) << std::endl;
+    std::fill(x.begin(), x.end(), 0.0);
+    std::cout << "cf02 = " << cf02(x, aux, shift, rotate, false) << std::endl;
+    std::fill(x.begin(), x.end(), 0.0);
+    std::cout << "cf03 = " << cf03(x, aux, shift, rotate, false) << std::endl;
+    std::fill(x.begin(), x.end(), 0.0);
+    std::cout << "cf04 = " << cf04(x, aux, shift, rotate, false) << std::endl;
     return 1;
 }
 

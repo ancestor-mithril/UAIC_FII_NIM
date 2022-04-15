@@ -24,11 +24,11 @@ struct L2Distance {
 };
 
 struct L2Norm {
-    double operator()(const std::vector<double>& a) const 
+    double operator()(const std::vector<double>& a) const
     {
         // Accumulate vs reduce
-        return std::sqrt(std::accumulate(a.begin(), a.end(), 0.0,
-            [](auto x, auto y) { return x + y * y; }));
+        return std::sqrt(std::accumulate(
+            a.begin(), a.end(), 0.0, [](auto x, auto y) { return x + y * y; }));
     }
 };
 
