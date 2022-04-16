@@ -174,7 +174,6 @@ double ackley_func(const VectorRange& x)
 double do_bent_cigar_func(const VectorRange& x)
 {
     // assuming x.size() >= 1
-    // TODO: first
     return std::accumulate(std::next(x.begin), x.end, (*x.begin) * (*x.begin),
                            [](auto f, auto elem) {
                                return f + elem * elem * 1000000.0;
@@ -240,11 +239,10 @@ ellips_func(std::vector<double>& x, std::vector<double>& aux,
     shiftRotateTransform(x, aux, shiftBegin, rotateBegin, 1.0, shiftFlag,
                          rotateFlag);
 
-    auto i = 0;
     // here we need to accumulate because reduce does not maintain order
     return std::accumulate(
-        std::next(x.begin()), x.end(), 0.0,
-        [&i, n = x.size()](auto f, auto elem) {
+        x.begin(), x.end(), 0.0,
+        [i = 0, n = x.size() - 1.0](auto f, auto elem) mutable {
             return std::move(f) + std::pow(10.0, 6.0 * (i++) / n) * elem * elem;
         });
 }
@@ -784,6 +782,7 @@ double cf01(std::vector<double>& x, std::vector<double>& aux,
     constexpr auto N = 5;
     // fit is function result * lambda + bias
     // lambda is 1, 1e-6, 1e-6, 1e-6, 1e-6
+    // lambda in their implementation is 1, 1e-6, 1e-26, 1e-6, 1e-6
     // bias is 0, 200, 300, 100, 400
     const std::array<double, N> fit{
         rosenbrock_func(x, aux, shift.cbegin(), rotate.cbegin(), true,
@@ -793,7 +792,7 @@ double cf01(std::vector<double>& x, std::vector<double>& aux,
             200,
         bent_cigar_func(x, aux, shift_margin_2, rotate_margin_2, true,
                         rotateFlag) *
-                1e-6 +
+                1e-26 +
             300,
         discus_func(x, aux, shift_margin_3, rotate_margin_3, true, rotateFlag) *
                 1e-6 +
@@ -802,7 +801,6 @@ double cf01(std::vector<double>& x, std::vector<double>& aux,
                 1e-6 +
             400, // ?? why false
     };
-    // TODO: Check why lambda is different in their implementation
     const std::array<int, N> delta{10, 20, 30, 40, 50};
     return compositionFunctionCalculator<N>(x, shift, delta, fit);
 }
@@ -832,7 +830,6 @@ double cf02(std::vector<double>& x, std::vector<double>& aux,
         hgbat_func(x, aux, shift_margin_2, rotate_margin_2, true, rotateFlag) +
             100,
     };
-    // TODO: Check why lambda is different in their implementation
     const std::array<int, N> delta{20, 10, 10};
     return compositionFunctionCalculator<N>(x, shift, delta, fit);
 }
@@ -856,30 +853,30 @@ double cf03(std::vector<double>& x, std::vector<double>& aux,
     constexpr auto N = 5;
     // fit is function result * lambda + bias
     // lambda = [1e-26, 10, 1e-6, 10, 5e-4]
+    // their lambda is [10000/2e+7, 1, 1000 / 100, 1,  10000 / 1e+3]
     // bias = [0, 200, 300, 400, 200]
     const std::array<double, N> fit{
         escaffer6_func(x, aux, shift.cbegin(), rotate.cbegin(), true,
                        rotateFlag) *
-            1e-26,
+            (10000.0 / 2e+7),
         schwefel_func(x, aux, shift_margin_1, rotate_margin_1, true,
                       rotateFlag) *
-                10 +
+                1.0 +
             200,
         griewank_func(x, aux, shift_margin_2, rotate_margin_2, true,
                       rotateFlag) *
-                1e-6 +
+                (1000 / 100) +
             300,
         rosenbrock_func(x, aux, shift_margin_3, rotate_margin_3, true,
                         rotateFlag) *
-                10 +
+                1 +
             400,
         rastrigin_func(x, aux, shift_margin_4, rotate_margin_4, true,
                        rotateFlag) *
-                5e-4 +
+                (10000 / 1e+3) +
             200,
 
     };
-    // TODO: Check why lambda is different in their implementation
     const std::array<int, N> delta{20, 20, 30, 30, 20};
     return compositionFunctionCalculator<N>(x, shift, delta, fit);
 }
@@ -926,7 +923,7 @@ double cf04(std::vector<double>& x, std::vector<double>& aux,
             400,
         escaffer6_func(x, aux, shift_margin_5, rotate_margin_5, true,
                        rotateFlag) *
-                5e-4 +
+                5e-4 + 
             200,
 
     };

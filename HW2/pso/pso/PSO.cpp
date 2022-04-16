@@ -33,8 +33,8 @@ PSO getDefault(std::string_view functionName, int dimensions)
         dimensions,
         100,  // populationSize
         0.3,  // inertia
-        3,    // cognition
-        1,    // social
+        1,    // cognition
+        3,    // social
         true, // augment
         true, // shiftFlag
         true  // rotateFlag
