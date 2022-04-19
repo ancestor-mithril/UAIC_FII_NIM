@@ -20,6 +20,7 @@ class PSO
         double inertia,
         double cognition,
         double social,
+        double chaosCoef,
         bool augment,
         bool shiftFlag,
         bool rotateFlag);
@@ -45,7 +46,6 @@ class PSO
     function_layer::FunctionManager functionManager;
 
     std::vector<std::vector<double>> population;
-    std::vector<std::vector<double>> population2;
     std::vector<std::vector<double>> aux;
     std::vector<std::vector<double>> populationVelocity;
     std::vector<std::vector<double>> populationPastBests;
@@ -61,6 +61,7 @@ class PSO
     double inertia;
     double cognition;
     double social;
+    double chaosCoef;
 
     const bool augment;
 };

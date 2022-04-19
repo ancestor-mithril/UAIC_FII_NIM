@@ -24,6 +24,20 @@ void randomizeVector(std::vector<double>& v,
     randomizeVector(v, dist, gen, 1);
 }
 
+std::string vecToString(const std::vector<double>& v)
+{
+    using namespace std::string_literals;
+    if (v.empty()) {
+        return "[]"s;
+    }
+    auto ret = "["s + std::to_string(v[0]);
+    return std::accumulate(std::next(v.begin()), v.end(), ret,
+                           [](auto f, auto x) {
+                               return std::move(f) + ","s + std::to_string(x);
+                           }) +
+           "]"s;
+}
+
 } // namespace
 
 PSO getDefault(std::string_view functionName, int dimensions)
@@ -35,6 +49,7 @@ PSO getDefault(std::string_view functionName, int dimensions)
         0.3,  // inertia
         1,    // cognition
         3,    // social
+        0.001,    // chaosCoef
         true, // augment
         true, // shiftFlag
         true  // rotateFlag
@@ -48,6 +63,7 @@ PSO::PSO(std::string_view functionName,
         double inertia,
         double cognition,
         double social,
+        double chaosCoef,
         bool augment,
         bool shiftFlag,
         bool rotateFlag)
@@ -57,6 +73,7 @@ PSO::PSO(std::string_view functionName,
     , inertia{inertia}
     , cognition{cognition}
     , social{social}
+    , chaosCoef{chaosCoef}
     , augment{augment}
 // clang-format on
 {
@@ -83,7 +100,6 @@ PSO::PSO(std::string_view functionName,
             globalBest = population[i];
         }
     }
-    population2 = population;
 }
 
 bool PSO::stop() const
@@ -98,10 +114,11 @@ double PSO::run()
     } catch (const std::out_of_range& err) {
         // max function calls reached
     }
-    std::cout << "Epochs done: " << currentEpoch << std::endl;
-    std::cout << "Cache hits: " << functionManager.hitCount() << std::endl;
-    std::cout << "Least difference higher than epsilon: "
-              << functionManager.getMinimum() << std::endl;
+    // std::cout << "Epochs done: " << currentEpoch << std::endl;
+    // std::cout << "Cache hits: " << functionManager.hitCount() << std::endl;
+    // std::cout << "Least difference higher than epsilon: "
+    //           << functionManager.getMinimum() << std::endl;
+    // std::cout << "Best: \n" << vecToString(globalBest) << std::endl;
     return globalBestEval;
 }
 
@@ -122,10 +139,7 @@ void PSO::runInternal()
 
 void PSO::updateBest(int i)
 {
-    std::copy(population[i].begin(), population[i].end(),
-              population2[i].begin());
-    const auto current = functionManager(
-        population2[i], aux[i]); // calling function with copied value
+    const auto current = functionManager(population[i], aux[i]);
     if (current < populationPastBestEval[i]) {
         populationPastBestEval[i] = current;
         populationPastBests[i] = population[i];
@@ -147,7 +161,7 @@ void PSO::updateVelocity(int i)
 
     for (auto d = 0; d < dimensions; ++d) {
         // TODO: use parameter for 0.001
-        if (augment and randomDouble(gen) < 0.001) {
+        if (augment and randomDouble(gen) < chaosCoef) {
             populationVelocity[i][d] = randomFromDomainRange(gen);
         }
 

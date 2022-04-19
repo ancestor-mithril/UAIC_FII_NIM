@@ -3,7 +3,6 @@
 #include "../cec22/Cec22.h"
 #include "../utils/Constants.h"
 #include "../utils/Utils.h"
-#include "CacheLayer.h"
 
 #include <filesystem>
 #include <fstream>
@@ -25,6 +24,48 @@ std::string getInputDir()
     }
     return fs::current_path().string() + "/input_data/";
     // TODO: implement recursive search
+}
+
+std::vector<double>
+readCompositeShift(std::size_t dimensions, int rows, int index, bool shiftFlag)
+{
+    if (not shiftFlag) {
+        return {};
+    }
+
+    const auto file =
+        getInputDir() + "shift_data_" + std::to_string(index) + ".txt";
+    if (not fs::exists(file)) {
+        throw std::runtime_error{"File " + file + " does not exist"};
+    }
+
+    std::ifstream in{file};
+    std::vector<std::vector<double>> shift;
+    for (std::string str; std::getline(in, str);) {
+        std::istringstream ss{str};
+        shift.push_back({std::istream_iterator<double>{ss},
+                         std::istream_iterator<double>{}});
+    }
+
+    if (shift.size() < rows) {
+        std::cerr << "Rotate has " << shift.size() << " rows, expected " << rows
+                  << "\n";
+        throw std::runtime_error{"Read error"};
+    }
+    shift.resize(rows);
+    for (auto& row : shift) {
+        if (row.size() < dimensions) {
+            std::cerr << "Row has " << row.size() << " columns, expected "
+                      << dimensions << "\n";
+            throw std::runtime_error{"Read error"};
+        }
+        row.resize(dimensions);
+    }
+    auto ret = std::vector<double>{};
+    for (auto& row : shift) {
+        ret.insert(ret.end(), row.begin(), row.end());
+    }
+    return ret;
 }
 
 std::vector<double> readShift(std::size_t dimensions, int index, bool shiftFlag)
@@ -105,7 +146,7 @@ std::vector<std::size_t> readShuffle(std::size_t dimensions, int index)
 
     // Validation
     std::set<std::size_t> set;
-    for (auto i : x) {
+    for (auto& i : x) {
         --i;
         if (i > dimensions) {
             // i can't be smaller than 0 because it's size_t
@@ -203,7 +244,7 @@ initFunction(const std::string& functionName, int dimensions, bool shiftFlag,
     if (compositionFunctions.find(functionName) != compositionFunctions.end()) {
         const auto [index, f, fStar, n] = compositionFunctions.at(functionName);
         return [=, f = std::move(f),
-                shift = readShift(dimensions * n, index, true),
+                shift = readCompositeShift(dimensions, n, index, true),
                 rotate = readRotate(dimensions * n, dimensions, index, true)](
                    std::vector<double>& x, std::vector<double>& aux) {
             return f(x, aux, shift, rotate, true); // always rotate
@@ -227,8 +268,6 @@ initFunction(const std::string& functionName, int dimensions, bool shiftFlag,
     throw std::runtime_error{"Function "s + functionName + " not found."s};
 }
 
-auto cache = cache_layer::CacheLayer{}.cache;
-
 } // namespace
 
 FunctionManager::FunctionManager(std::string_view function, int dimensions,
@@ -246,13 +285,18 @@ FunctionManager::FunctionManager(std::string_view function, int dimensions,
     }
 }
 
+double FunctionManager::cheat(std::vector<double>& x, std::vector<double>& aux)
+{
+    return function(x, aux);
+}
+
 double
 FunctionManager::operator()(std::vector<double>& x, std::vector<double>& aux)
 {
     // TODO: Add searching strategy (verify all, find, lowe_bound, between lower
     // and upper bound)
-    auto it = cache.lower_bound(x);
-    if (it == cache.end()) {
+    auto it = cache.cache.lower_bound(x);
+    if (it == cache.cache.end()) {
         // iterator hint is useless in this case
         return callFunctionAndUpdateCache(x, aux, it);
     }
@@ -280,7 +324,7 @@ double FunctionManager::callFunctionAndUpdateCache(
 {
     auto value = callFunction(x, aux);
     // this makes copy
-    cache.insert(it, {x, value});
+    cache.cache.insert(it, {x, value});
     return value;
 }
 

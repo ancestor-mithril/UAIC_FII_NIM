@@ -20,29 +20,38 @@ struct VectorRange {
     std::vector<double>::iterator end;
 };
 
-void shiftfunc(std::vector<double>& x, const vector_begin shiftBegin)
+// void print_vec(const std::vector<double>& x)
+// {
+//     for (auto i : x) {
+//         std::cout << i << ' ';
+//     }
+//     std::cout << '\n';
+// }
+
+void shiftfunc(const std::vector<double>& x, std::vector<double>& aux,
+               const vector_begin shiftBegin)
 {
     // assuming x.size() == shift.size()
-    std::transform(x.begin(), x.end(), shiftBegin, x.begin(),
+    std::transform(x.begin(), x.end(), shiftBegin, aux.begin(),
                    std::minus<double>());
     // TODO: Check what nethods can be vectorized
 }
 
-void rotatefunc(std::vector<double>& x, std::vector<double>& aux,
+void rotatefunc(std::vector<double>& aux, std::vector<double>& aux2,
                 const matrix_begin rotateBegin)
 {
     // assuming x.size() == rotate.size() == rotate[0].size() <= aux.size()
-    const auto n = x.size();
-    const auto auxBegin = aux.begin();
-    std::fill(auxBegin, std::next(auxBegin, n), 0.0); // setting aux with 0.0
+    const auto n = aux.size();
+    const auto aux2Begin = aux2.begin();
+    std::fill(aux2Begin, std::next(aux2Begin, n), 0.0); // setting aux with 0.0
     for (std::size_t i = 0; i < n; ++i) {
         for (std::size_t j = 0; j < n; ++j) {
-            aux[i] +=
-                x[j] * (*std::next(rotateBegin,
-                                   i))[j]; // rotate[i][j] but with iterators
+            aux2[i] +=
+                aux[j] * (*std::next(rotateBegin,
+                                     i))[j]; // rotate[i][j] but with iterators
         }
     }
-    x.swap(aux);
+    std::swap(aux2, aux);
 }
 
 // const VectorRange is misleading. Value of iterators can change, the position
@@ -54,28 +63,32 @@ void justShift(const VectorRange& x, double shiftRate)
         std::bind(std::multiplies<double>(), std::placeholders::_1, shiftRate));
 }
 
-void shiftRotateTransform(std::vector<double>& x, std::vector<double>& aux,
+void shiftRotateTransform(const std::vector<double>& x,
+                          std::vector<double>& aux,
                           const vector_begin shiftBegin,
                           const matrix_begin rotateBegin, double shiftRate,
                           bool shiftFlag, bool rotateFlag)
 {
     // template bool and if constexpr
     if (shiftFlag) [[likely]] {
-        shiftfunc(x, shiftBegin);
+        shiftfunc(x, aux, shiftBegin);
     }
 
     // should we check if shift rate is 1.0? Or should we provide a different
     // overload without shift rate?
     std::transform(
-        x.begin(), x.end(), x.begin(),
+        aux.begin(), aux.end(), aux.begin(),
         std::bind(std::multiplies<double>(), std::placeholders::_1, shiftRate));
 
     if (rotateFlag) [[likely]] {
-        rotatefunc(x, aux, rotateBegin);
+        auto aux2 = aux; //
+        rotatefunc(aux, aux2, rotateBegin);
     }
+    // print_vec(aux);
 }
 
-void shiftRotateTransform(std::vector<double>& x, std::vector<double>& aux,
+void shiftRotateTransform(const std::vector<double>& x,
+                          std::vector<double>& aux,
                           const std::vector<double>& shift,
                           const std::vector<std::vector<double>>& rotate,
                           double shiftRate, bool shiftFlag, bool rotateFlag)
@@ -153,7 +166,7 @@ double do_ackley_func(const VectorRange& x)
     return E - 20.0 * std::exp(sum1) - std::exp(sum2) + 20.0;
 }
 
-double ackley_func(std::vector<double>& x, std::vector<double>& aux,
+double ackley_func(const std::vector<double>& x, std::vector<double>& aux,
                    const std::vector<double>& shift,
                    const std::vector<std::vector<double>>& rotate,
                    bool shiftFlag, bool rotateFlag)
@@ -161,7 +174,7 @@ double ackley_func(std::vector<double>& x, std::vector<double>& aux,
     shiftRotateTransform(x, aux, shift.cbegin(), rotate.cbegin(), 1.0,
                          shiftFlag, rotateFlag);
 
-    return do_ackley_func({x.begin(), x.end()});
+    return do_ackley_func({aux.begin(), aux.end()});
 }
 
 double ackley_func(const VectorRange& x)
@@ -189,17 +202,17 @@ double bent_cigar_func(const VectorRange& x)
 }
 
 double
-bent_cigar_func(std::vector<double>& x, std::vector<double>& aux,
+bent_cigar_func(const std::vector<double>& x, std::vector<double>& aux,
                 const vector_begin shiftBegin, const matrix_begin rotateBegin,
                 bool shiftFlag, bool rotateFlag)
 {
     shiftRotateTransform(x, aux, shiftBegin, rotateBegin, 1.0, shiftFlag,
                          rotateFlag);
 
-    return do_bent_cigar_func({x.begin(), x.end()});
+    return do_bent_cigar_func({aux.begin(), aux.end()});
 }
 
-double bent_cigar_func(std::vector<double>& x, std::vector<double>& aux,
+double bent_cigar_func(const std::vector<double>& x, std::vector<double>& aux,
                        const std::vector<double>& shift,
                        const std::vector<std::vector<double>>& rotate,
                        bool shiftFlag, bool rotateFlag)
@@ -209,7 +222,7 @@ double bent_cigar_func(std::vector<double>& x, std::vector<double>& aux,
 }
 
 double
-discus_func(std::vector<double>& x, std::vector<double>& aux,
+discus_func(const std::vector<double>& x, std::vector<double>& aux,
             const vector_begin shiftBegin, const matrix_begin rotateBegin,
             bool shiftFlag, bool rotateFlag)
 {
@@ -217,12 +230,12 @@ discus_func(std::vector<double>& x, std::vector<double>& aux,
                          rotateFlag);
     // 1000000.0 = std::pow(10.0, 6.0)
     // assuming x.size() >= 1
-    return std::accumulate(std::next(x.begin()), x.end(),
-                           x[0] * x[0] * 1000000.0,
+    return std::accumulate(std::next(aux.begin()), aux.end(),
+                           aux[0] * aux[0] * 1000000.0,
                            [](auto f, auto elem) { return f + elem * elem; });
 }
 
-double discus_func(std::vector<double>& x, std::vector<double>& aux,
+double discus_func(const std::vector<double>& x, std::vector<double>& aux,
                    const std::vector<double>& shift,
                    const std::vector<std::vector<double>>& rotate,
                    bool shiftFlag, bool rotateFlag)
@@ -232,22 +245,21 @@ double discus_func(std::vector<double>& x, std::vector<double>& aux,
 }
 
 double
-ellips_func(std::vector<double>& x, std::vector<double>& aux,
+ellips_func(const std::vector<double>& x, std::vector<double>& aux,
             const vector_begin shiftBegin, const matrix_begin rotateBegin,
             bool shiftFlag, bool rotateFlag)
 {
     shiftRotateTransform(x, aux, shiftBegin, rotateBegin, 1.0, shiftFlag,
                          rotateFlag);
-
     // here we need to accumulate because reduce does not maintain order
     return std::accumulate(
-        x.begin(), x.end(), 0.0,
-        [i = 0, n = x.size() - 1.0](auto f, auto elem) mutable {
+        aux.begin(), aux.end(), 0.0,
+        [i = 0, n = aux.size() - 1.0](auto f, auto elem) mutable {
             return std::move(f) + std::pow(10.0, 6.0 * (i++) / n) * elem * elem;
         });
 }
 
-double ellips_func(std::vector<double>& x, std::vector<double>& aux,
+double ellips_func(const std::vector<double>& x, std::vector<double>& aux,
                    const std::vector<double>& shift,
                    const std::vector<std::vector<double>>& rotate,
                    bool shiftFlag, bool rotateFlag)
@@ -257,28 +269,28 @@ double ellips_func(std::vector<double>& x, std::vector<double>& aux,
 }
 
 double
-escaffer6_func(std::vector<double>& x, std::vector<double>& aux,
+escaffer6_func(const std::vector<double>& x, std::vector<double>& aux,
                const vector_begin shiftBegin, const matrix_begin rotateBegin,
                bool shiftFlag, bool rotateFlag)
 {
     shiftRotateTransform(x, aux, shiftBegin, rotateBegin, 1.0, shiftFlag,
                          rotateFlag);
 
-    const auto n = x.size();
+    const auto n = aux.size();
     auto f = 0.0;
 
     for (std::size_t i = 0; i < n - 1; ++i) {
-        const auto xi = x[i] * x[i];
-        const auto xinext = x[i + 1] * x[i + 1];
+        const auto xi = aux[i] * aux[i];
+        const auto xinext = aux[i + 1] * aux[i + 1];
         // TODO: test in godbolt xi&xinext against code without them
         const auto temp1 = std::sin(std::sqrt(xi + xinext));
         const auto temp2 = 1.0 + 0.001 * (xi + xinext);
         f += 0.5 + (temp1 * temp1 - 0.5) / (temp2 * temp2);
     }
 
-    const auto first = x[0] * x[0];
+    const auto first = aux[0] * aux[0];
     // assuming x.size() is not 0
-    const auto last = x[n - 1] * x[n - 1];
+    const auto last = aux[n - 1] * aux[n - 1];
     const auto temp1 = std::sin(std::sqrt(last + first));
     const auto temp2 = 1.0 + 0.001 * (last + first);
     f += 0.5 + (temp1 * temp1 - 0.5) / (temp2 * temp2);
@@ -286,7 +298,7 @@ escaffer6_func(std::vector<double>& x, std::vector<double>& aux,
     return f;
 }
 
-double escaffer6_func(std::vector<double>& x, std::vector<double>& aux,
+double escaffer6_func(const std::vector<double>& x, std::vector<double>& aux,
                       const std::vector<double>& shift,
                       const std::vector<std::vector<double>>& rotate,
                       bool shiftFlag, bool rotateFlag)
@@ -296,7 +308,7 @@ double escaffer6_func(std::vector<double>& x, std::vector<double>& aux,
 }
 
 double
-griewank_func(std::vector<double>& x, std::vector<double>& aux,
+griewank_func(const std::vector<double>& x, std::vector<double>& aux,
               const vector_begin shiftBegin, const matrix_begin rotateBegin,
               bool shiftFlag, bool rotateFlag)
 {
@@ -306,14 +318,14 @@ griewank_func(std::vector<double>& x, std::vector<double>& aux,
     // TODO: n
     auto s = 0.0;
     auto p = 1.0;
-    for (std::size_t i = 0; i < x.size(); ++i) {
-        s += x[i] * x[i];
-        p *= std::cos(x[i] / std::sqrt(1.0 + i));
+    for (std::size_t i = 0; i < aux.size(); ++i) {
+        s += aux[i] * aux[i];
+        p *= std::cos(aux[i] / std::sqrt(1.0 + i));
     }
     return 1.0 + s / 4000.0 - p;
 }
 
-double griewank_func(std::vector<double>& x, std::vector<double>& aux,
+double griewank_func(const std::vector<double>& x, std::vector<double>& aux,
                      const std::vector<double>& shift,
                      const std::vector<std::vector<double>>& rotate,
                      bool shiftFlag, bool rotateFlag)
@@ -346,7 +358,7 @@ double do_grie_rosen_func(const VectorRange& x)
     return f;
 }
 
-double grie_rosen_func(std::vector<double>& x, std::vector<double>& aux,
+double grie_rosen_func(const std::vector<double>& x, std::vector<double>& aux,
                        const std::vector<double>& shift,
                        const std::vector<std::vector<double>>& rotate,
                        bool shiftFlag, bool rotateFlag)
@@ -354,7 +366,7 @@ double grie_rosen_func(std::vector<double>& x, std::vector<double>& aux,
     shiftRotateTransform(x, aux, shift.cbegin(), rotate.cbegin(), 5.0 / 100.0,
                          shiftFlag, rotateFlag);
 
-    return do_grie_rosen_func({x.begin(), x.end()});
+    return do_grie_rosen_func({aux.begin(), aux.end()});
 }
 
 double grie_rosen_func(const VectorRange& x)
@@ -379,7 +391,7 @@ double do_happycat_func(const VectorRange& x)
            0.5;
 }
 
-double happycat_func(std::vector<double>& x, std::vector<double>& aux,
+double happycat_func(const std::vector<double>& x, std::vector<double>& aux,
                      const std::vector<double>& shift,
                      const std::vector<std::vector<double>>& rotate,
                      bool shiftFlag, bool rotateFlag)
@@ -387,7 +399,7 @@ double happycat_func(std::vector<double>& x, std::vector<double>& aux,
     shiftRotateTransform(x, aux, shift.cbegin(), rotate.cbegin(), 5.0 / 100.0,
                          shiftFlag, rotateFlag);
 
-    return do_happycat_func({x.begin(), x.end()});
+    return do_happycat_func({aux.begin(), aux.end()});
 }
 
 double happycat_func(const VectorRange& x)
@@ -411,14 +423,14 @@ double do_hgbat_func(const VectorRange& x)
            (0.5 * r2 + sum_y) / std::distance(x.begin, x.end) + 0.5;
 }
 
-double hgbat_func(std::vector<double>& x, std::vector<double>& aux,
+double hgbat_func(const std::vector<double>& x, std::vector<double>& aux,
                   const vector_begin shiftBegin, const matrix_begin rotateBegin,
                   bool shiftFlag, bool rotateFlag)
 {
     shiftRotateTransform(x, aux, shiftBegin, rotateBegin, 5.0 / 100.0,
                          shiftFlag, rotateFlag);
 
-    return do_hgbat_func({x.begin(), x.end()});
+    return do_hgbat_func({aux.begin(), aux.end()});
 }
 
 double hgbat_func(const VectorRange& x)
@@ -428,7 +440,7 @@ double hgbat_func(const VectorRange& x)
     return do_hgbat_func(x);
 }
 
-double hgbat_func(std::vector<double>& x, std::vector<double>& aux,
+double hgbat_func(const std::vector<double>& x, std::vector<double>& aux,
                   const std::vector<double>& shift,
                   const std::vector<std::vector<double>>& rotate,
                   bool shiftFlag, bool rotateFlag)
@@ -438,23 +450,22 @@ double hgbat_func(std::vector<double>& x, std::vector<double>& aux,
 }
 
 double
-rosenbrock_func(std::vector<double>& x, std::vector<double>& aux,
+rosenbrock_func(const std::vector<double>& x, std::vector<double>& aux,
                 const vector_begin shiftBegin, const matrix_begin rotateBegin,
                 bool shiftFlag, bool rotateFlag)
 {
     shiftRotateTransform(x, aux, shiftBegin, rotateBegin, 2.048 / 100.0,
                          shiftFlag, rotateFlag);
-
     auto f = 0.0;
-    for (std::size_t i = 0; i < x.size() - 1; ++i) {
-        const auto aux = x[i] + 1.0;
-        const auto temp1 = aux * aux - x[i + 1] - 1.0;
-        f += 100.0 * temp1 * temp1 + x[i] * x[i];
+    for (std::size_t i = 0; i < aux.size() - 1; ++i) {
+        const auto temp = aux[i] + 1.0;
+        const auto temp1 = temp * temp - aux[i + 1] - 1.0;
+        f += 100.0 * temp1 * temp1 + aux[i] * aux[i];
     }
     return f;
 }
 
-double rosenbrock_func(std::vector<double>& x, std::vector<double>& aux,
+double rosenbrock_func(const std::vector<double>& x, std::vector<double>& aux,
                        const std::vector<double>& shift,
                        const std::vector<std::vector<double>>& rotate,
                        bool shiftFlag, bool rotateFlag)
@@ -473,14 +484,14 @@ double do_rastrigin_func(const VectorRange& x)
 }
 
 double
-rastrigin_func(std::vector<double>& x, std::vector<double>& aux,
+rastrigin_func(const std::vector<double>& x, std::vector<double>& aux,
                const vector_begin shiftBegin, const matrix_begin rotateBegin,
                bool shiftFlag, bool rotateFlag)
 {
     shiftRotateTransform(x, aux, shiftBegin, rotateBegin, 5.12 / 100.0,
                          shiftFlag, rotateFlag);
 
-    return do_rastrigin_func({x.begin(), x.end()});
+    return do_rastrigin_func({aux.begin(), aux.end()});
 }
 
 double rastrigin_func(const VectorRange& x)
@@ -490,7 +501,7 @@ double rastrigin_func(const VectorRange& x)
     return do_rastrigin_func(x);
 }
 
-double rastrigin_func(std::vector<double>& x, std::vector<double>& aux,
+double rastrigin_func(const std::vector<double>& x, std::vector<double>& aux,
                       const std::vector<double>& shift,
                       const std::vector<std::vector<double>>& rotate,
                       bool shiftFlag, bool rotateFlag)
@@ -524,14 +535,14 @@ double do_schwefel_func(const VectorRange& x)
 }
 
 double
-schwefel_func(std::vector<double>& x, std::vector<double>& aux,
+schwefel_func(const std::vector<double>& x, std::vector<double>& aux,
               const vector_begin shiftBegin, const matrix_begin rotateBegin,
               bool shiftFlag, bool rotateFlag)
 {
     shiftRotateTransform(x, aux, shiftBegin, rotateBegin, 1000.0 / 100.0,
                          shiftFlag, rotateFlag);
 
-    return do_schwefel_func({x.begin(), x.end()});
+    return do_schwefel_func({aux.begin(), aux.end()});
 }
 
 double schwefel_func(const VectorRange& x)
@@ -541,7 +552,7 @@ double schwefel_func(const VectorRange& x)
     return do_schwefel_func(x);
 }
 
-double schwefel_func(std::vector<double>& x, std::vector<double>& aux,
+double schwefel_func(const std::vector<double>& x, std::vector<double>& aux,
                      const std::vector<double>& shift,
                      const std::vector<std::vector<double>>& rotate,
                      bool shiftFlag, bool rotateFlag)
@@ -559,25 +570,24 @@ double do_schaffer_F7_func(const VectorRange& x)
         const auto temp1 = *it;
         std::advance(it, 1); // TODO: vs ++it
         const auto temp2 = *it;
-
         const auto si = std::sqrt(temp1 * temp1 + temp2 * temp2);
         const auto temp = std::sin(50.0 * std::pow(si, 0.2));
         const auto sqrtsi = std::sqrt(si);
         f += sqrtsi + sqrtsi * temp * temp;
     }
 
-    const auto n = std::distance(x.begin, x.end);
+    const auto n = std::distance(x.begin, x.end) - 1;
     return f * f / n / n;
 }
 
-double schaffer_F7_func(std::vector<double>& x, std::vector<double>& aux,
+double schaffer_F7_func(const std::vector<double>& x, std::vector<double>& aux,
                         const std::vector<double>& shift,
                         const std::vector<std::vector<double>>& rotate,
-                        bool shiftFlag, bool rotateFlag)
+                        bool shiftFlag, [[maybe_unused]] bool rotateFlag)
 {
-    shiftRotateTransform(x, aux, shift, rotate, 1.0, shiftFlag, rotateFlag);
+    shiftRotateTransform(x, aux, shift, rotate, 1.0, shiftFlag, false);
 
-    return do_schaffer_F7_func({x.begin(), x.end()});
+    return do_schaffer_F7_func({aux.begin(), aux.end()});
 }
 
 double schaffer_F7_func(const VectorRange& x)
@@ -587,10 +597,11 @@ double schaffer_F7_func(const VectorRange& x)
     return do_schaffer_F7_func(x);
 }
 
-double step_rastrigin_func(std::vector<double>& x, std::vector<double>& aux,
-                           const std::vector<double>& shift,
-                           const std::vector<std::vector<double>>& rotate,
-                           bool shiftFlag, bool rotateFlag)
+double
+step_rastrigin_func(const std::vector<double>& x, std::vector<double>& aux,
+                    const std::vector<double>& shift,
+                    const std::vector<std::vector<double>>& rotate,
+                    bool shiftFlag, bool rotateFlag)
 {
     // ??? is exactly rastrigin
     // TODO: maybe remove shift and rotate flag and always shift and rotate
@@ -598,7 +609,7 @@ double step_rastrigin_func(std::vector<double>& x, std::vector<double>& aux,
     return rastrigin_func(x, aux, shift, rotate, shiftFlag, rotateFlag);
 }
 
-double levy_func(std::vector<double>& x, std::vector<double>& aux,
+double levy_func(const std::vector<double>& x, std::vector<double>& aux,
                  const std::vector<double>& shift,
                  const std::vector<std::vector<double>>& rotate, bool shiftFlag,
                  bool rotateFlag)
@@ -609,21 +620,20 @@ double levy_func(std::vector<double>& x, std::vector<double>& aux,
     // Correct is (elem - 1.0), but it does not provide a minumum close to 0
     const auto w = [](auto elem) { return 1.0 + (elem - 0.0) / 4.0; };
 
-    const auto term1 = std::sin(PI * w(x[0]));
+    const auto term1 = std::sin(PI * w(aux[0]));
     const auto term2 = std::accumulate(
-        x.begin(), std::prev(x.end()), 0.0, [&w](auto f, auto elem) {
+        aux.begin(), std::prev(aux.end()), 0.0, [&w](auto f, auto elem) {
             const auto wi = w(elem);
             const auto temp = std::sin(PI * wi + 1.0);
             return f + (wi - 1.0) * (wi - 1.0) * (1.0 + 10.0 * temp * temp);
         });
-    const auto last = w(*std::prev(x.end()));
+    const auto last = w(*std::prev(aux.end()));
     const auto temp = std::sin(2.0 * PI * last);
     const auto term3 = (last - 1.0) * (last - 1.0) * (1.0 + temp * temp);
-
     return term1 * term1 + term2 + term3;
 }
 
-double zakharov_func(std::vector<double>& x, std::vector<double>& aux,
+double zakharov_func(const std::vector<double>& x, std::vector<double>& aux,
                      const std::vector<double>& shift,
                      const std::vector<std::vector<double>>& rotate,
                      bool shiftFlag, bool rotateFlag)
@@ -632,9 +642,9 @@ double zakharov_func(std::vector<double>& x, std::vector<double>& aux,
 
     auto sum1 = 0.0;
     auto sum2 = 0.0;
-    for (std::size_t i = 0; i < x.size(); ++i) {
-        sum1 += x[i] * x[i];
-        sum2 += 0.5 * i * x[i];
+    for (std::size_t i = 0; i < aux.size(); ++i) {
+        sum1 += aux[i] * aux[i];
+        sum2 += 0.5 * i * aux[i];
     }
     return sum1 + sum2 * sum2 + sum2 * sum2 * sum2 * sum2;
 }
@@ -658,7 +668,7 @@ double do_katsuura_func(const VectorRange& x)
     return f * temp1 - temp1;
 }
 
-double katsuura_func(std::vector<double>& x, std::vector<double>& aux,
+double katsuura_func(const std::vector<double>& x, std::vector<double>& aux,
                      const std::vector<double>& shift,
                      const std::vector<std::vector<double>>& rotate,
                      bool shiftFlag, bool rotateFlag)
@@ -666,7 +676,7 @@ double katsuura_func(std::vector<double>& x, std::vector<double>& aux,
     shiftRotateTransform(x, aux, shift, rotate, 5.0 / 100.0, shiftFlag,
                          rotateFlag);
 
-    return do_katsuura_func({x.begin(), x.end()});
+    return do_katsuura_func({aux.begin(), aux.end()});
 }
 
 double katsuura_func(const VectorRange& x)
@@ -677,22 +687,23 @@ double katsuura_func(const VectorRange& x)
 }
 
 double
-hf01(std::vector<double>& x, std::vector<double>& aux,
+hf01(const std::vector<double>& x, std::vector<double>& aux,
      const std::vector<double>& shift,
      const std::vector<std::vector<double>>& rotate,
      const std::vector<std::size_t>& indices, bool shiftFlag, bool rotateFlag)
 {
     // [0.4, 0.4, 0.2]
     shiftRotateTransform(x, aux, shift, rotate, 1.0, shiftFlag, rotateFlag);
-    applyPermutation(x, aux, indices);
+    auto aux2 = aux;
+    applyPermutation(aux, aux2, indices);
 
-    const auto limit = std::ceil(0.4 * x.size());
-    const auto margin_1 = std::next(x.begin(), limit); // 0.4
-    const auto margin_2 = std::next(margin_1, limit);  // another 0.4
+    const auto limit = std::ceil(0.4 * aux.size());
+    const auto margin_1 = std::next(aux.begin(), limit); // 0.4
+    const auto margin_2 = std::next(margin_1, limit);    // another 0.4
 
-    const auto range1 = VectorRange{x.begin(), margin_1};
+    const auto range1 = VectorRange{aux.begin(), margin_1};
     const auto range2 = VectorRange{margin_1, margin_2};
-    const auto range3 = VectorRange{margin_2, x.end()};
+    const auto range3 = VectorRange{margin_2, aux.end()};
 
     // these methods do not shift and rotate
     return bent_cigar_func(range1) + hgbat_func(range2) +
@@ -700,32 +711,35 @@ hf01(std::vector<double>& x, std::vector<double>& aux,
 }
 
 double
-hf02(std::vector<double>& x, std::vector<double>& aux,
+hf02(const std::vector<double>& x, std::vector<double>& aux,
      const std::vector<double>& shift,
      const std::vector<std::vector<double>>& rotate,
      const std::vector<std::size_t>& indices, bool shiftFlag, bool rotateFlag)
 {
     // [0.1, 0.2, 0.2, 0.2, 0.1, 0.2]
     shiftRotateTransform(x, aux, shift, rotate, 1.0, shiftFlag, rotateFlag);
-    applyPermutation(x, aux, indices);
+    auto aux2 = aux;
+    applyPermutation(aux, aux2, indices);
 
     // TODO: n
-    const auto limit1 = std::ceil(0.1 * x.size());
-    const auto limit2 = std::ceil(0.2 * x.size());
+    const auto limit1 = std::ceil(0.1 * aux.size());
+    const auto limit2 = std::ceil(0.2 * aux.size());
 
-    const auto margin1 = std::next(x.begin(), limit1); // 0.1
-    const auto margin2 = std::next(margin1, limit2);   // 0.2
-    const auto margin3 = std::next(margin2, limit2);   // 0.2
-    const auto margin4 = std::next(margin3, limit2);   // 0.2
-    const auto margin5 = std::next(margin4, limit1);   // 0.1
+    const auto margin1 = std::next(aux.begin(), limit1); // 0.1
+    const auto margin2 = std::next(margin1, limit2);     // 0.2
+    const auto margin3 = std::next(margin2, limit2);     // 0.2
+    const auto margin4 = std::next(margin3, limit2);     // 0.2
+    const auto margin5 = std::next(margin4, limit1);     // 0.1
     // remaining: 0.2
 
-    const auto range1 = VectorRange{x.begin(), margin1};
+    const auto range1 = VectorRange{aux.begin(), margin1};
     const auto range2 = VectorRange{margin1, margin2};
     const auto range3 = VectorRange{margin2, margin3};
     const auto range4 = VectorRange{margin3, margin4};
     const auto range5 = VectorRange{margin4, margin5};
-    const auto range6 = VectorRange{margin5, x.end()};
+    // const auto range6 = VectorRange{margin5, x.end()}; // CORRECT
+    auto copy = std::vector<double>{aux.begin(), aux.begin() + 2};
+    const auto range6 = VectorRange{copy.begin(), copy.end()}; // WRONG
 
     return hgbat_func(range1) + katsuura_func(range2) + ackley_func(range3) +
            rastrigin_func(range4) + schwefel_func(range5) +
@@ -733,37 +747,38 @@ hf02(std::vector<double>& x, std::vector<double>& aux,
 }
 
 double
-hf03(std::vector<double>& x, std::vector<double>& aux,
+hf03(const std::vector<double>& x, std::vector<double>& aux,
      const std::vector<double>& shift,
      const std::vector<std::vector<double>>& rotate,
      const std::vector<std::size_t>& indices, bool shiftFlag, bool rotateFlag)
 {
     //  [0.3, 0.2, 0.2, 0.1, 0.2]
     shiftRotateTransform(x, aux, shift, rotate, 1.0, shiftFlag, rotateFlag);
-    applyPermutation(x, aux, indices);
+    auto aux2 = aux;
+    applyPermutation(aux, aux2, indices);
 
-    const auto limit1 = std::ceil(0.1 * x.size());
-    const auto limit2 = std::ceil(0.2 * x.size());
-    const auto limit3 = std::ceil(0.3 * x.size());
+    const auto limit1 = std::ceil(0.1 * aux.size());
+    const auto limit2 = std::ceil(0.2 * aux.size());
+    const auto limit3 = std::ceil(0.3 * aux.size());
 
-    const auto margin1 = std::next(x.begin(), limit3); // 0.3
-    const auto margin2 = std::next(margin1, limit2);   // 0.2
-    const auto margin3 = std::next(margin2, limit2);   // 0.2
-    const auto margin4 = std::next(margin3, limit1);   // 0.1
+    const auto margin1 = std::next(aux.begin(), limit3); // 0.3
+    const auto margin2 = std::next(margin1, limit2);     // 0.2
+    const auto margin3 = std::next(margin2, limit2);     // 0.2
+    const auto margin4 = std::next(margin3, limit1);     // 0.1
     // remaining: 0.2
 
-    const auto range1 = VectorRange{x.begin(), margin1};
+    const auto range1 = VectorRange{aux.begin(), margin1};
     const auto range2 = VectorRange{margin1, margin2};
     const auto range3 = VectorRange{margin2, margin3};
     const auto range4 = VectorRange{margin3, margin4};
-    const auto range5 = VectorRange{margin4, x.end()};
+    const auto range5 = VectorRange{margin4, aux.end()};
 
     return katsuura_func(range1) + happycat_func(range2) +
            grie_rosen_func(range3) + schwefel_func(range4) +
            ackley_func(range5);
 }
 
-double cf01(std::vector<double>& x, std::vector<double>& aux,
+double cf01(const std::vector<double>& x, std::vector<double>& aux,
             const std::vector<double>& shift,
             const std::vector<std::vector<double>>& rotate, bool rotateFlag)
 {
@@ -784,6 +799,9 @@ double cf01(std::vector<double>& x, std::vector<double>& aux,
     // lambda is 1, 1e-6, 1e-6, 1e-6, 1e-6
     // lambda in their implementation is 1, 1e-6, 1e-26, 1e-6, 1e-6
     // bias is 0, 200, 300, 100, 400
+
+    // print_vec(shift);
+
     const std::array<double, N> fit{
         rosenbrock_func(x, aux, shift.cbegin(), rotate.cbegin(), true,
                         rotateFlag),
@@ -801,11 +819,12 @@ double cf01(std::vector<double>& x, std::vector<double>& aux,
                 1e-6 +
             400, // ?? why false
     };
+
     const std::array<int, N> delta{10, 20, 30, 40, 50};
     return compositionFunctionCalculator<N>(x, shift, delta, fit);
 }
 
-double cf02(std::vector<double>& x, std::vector<double>& aux,
+double cf02(const std::vector<double>& x, std::vector<double>& aux,
             const std::vector<double>& shift,
             const std::vector<std::vector<double>>& rotate, bool rotateFlag)
 {
@@ -834,7 +853,7 @@ double cf02(std::vector<double>& x, std::vector<double>& aux,
     return compositionFunctionCalculator<N>(x, shift, delta, fit);
 }
 
-double cf03(std::vector<double>& x, std::vector<double>& aux,
+double cf03(const std::vector<double>& x, std::vector<double>& aux,
             const std::vector<double>& shift,
             const std::vector<std::vector<double>>& rotate, bool rotateFlag)
 {
@@ -881,7 +900,7 @@ double cf03(std::vector<double>& x, std::vector<double>& aux,
     return compositionFunctionCalculator<N>(x, shift, delta, fit);
 }
 
-double cf04(std::vector<double>& x, std::vector<double>& aux,
+double cf04(const std::vector<double>& x, std::vector<double>& aux,
             const std::vector<double>& shift,
             const std::vector<std::vector<double>>& rotate, bool rotateFlag)
 {
@@ -923,7 +942,7 @@ double cf04(std::vector<double>& x, std::vector<double>& aux,
             400,
         escaffer6_func(x, aux, shift_margin_5, rotate_margin_5, true,
                        rotateFlag) *
-                5e-4 + 
+                5e-4 +
             200,
 
     };

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "CacheLayer.h"
+
 #include <functional>
 #include <limits>
 #include <map>
@@ -16,6 +18,7 @@ class FunctionManager
                     bool shiftFlag, bool rotateFlag);
 
     double operator()(std::vector<double>& x, std::vector<double>& aux);
+    double cheat(std::vector<double>& x, std::vector<double>& aux);
     int missCount() const
     {
         return functionCalls;
@@ -44,6 +47,7 @@ class FunctionManager
     int cacheHits = 0;
 
     std::function<double(std::vector<double>&, std::vector<double>&)> function;
+    cache_layer::CacheLayer cache;
 };
 
 } // namespace function_layer
