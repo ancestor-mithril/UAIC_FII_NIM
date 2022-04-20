@@ -5,6 +5,7 @@
 
 #include <limits>
 #include <random>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -27,6 +28,9 @@ class PSO
     // clang-format on
 
     double run();
+
+    int getCacheHits() const;
+    std::string getBestVector() const;
 
   private:
     void runInternal();

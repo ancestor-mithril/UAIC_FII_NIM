@@ -32,7 +32,7 @@ std::string vecToString(const std::vector<double>& v)
     }
     auto ret = "["s + std::to_string(v[0]);
     return std::accumulate(std::next(v.begin()), v.end(), ret,
-                           [](auto f, auto x) {
+                           [](auto&& f, auto x) {
                                return std::move(f) + ","s + std::to_string(x);
                            }) +
            "]"s;
@@ -45,14 +45,14 @@ PSO getDefault(std::string_view functionName, int dimensions)
     return PSO{
         functionName,
         dimensions,
-        100,  // populationSize
-        0.3,  // inertia
-        1,    // cognition
-        3,    // social
-        0.001,    // chaosCoef
-        true, // augment
-        true, // shiftFlag
-        true  // rotateFlag
+        100,   // populationSize
+        0.3,   // inertia
+        1,     // cognition
+        3,     // social
+        0.001, // chaosCoef
+        true,  // augment
+        true,  // shiftFlag
+        true   // rotateFlag
     };
 }
 
@@ -107,6 +107,16 @@ bool PSO::stop() const
     return globalBestEval <= constants::best;
 }
 
+int PSO::getCacheHits() const
+{
+    return functionManager.hitCount();
+}
+
+std::string PSO::getBestVector() const
+{
+    return vecToString(globalBest);
+}
+
 double PSO::run()
 {
     try {
@@ -115,10 +125,7 @@ double PSO::run()
         // max function calls reached
     }
     // std::cout << "Epochs done: " << currentEpoch << std::endl;
-    // std::cout << "Cache hits: " << functionManager.hitCount() << std::endl;
-    // std::cout << "Least difference higher than epsilon: "
     //           << functionManager.getMinimum() << std::endl;
-    // std::cout << "Best: \n" << vecToString(globalBest) << std::endl;
     return globalBestEval;
 }
 

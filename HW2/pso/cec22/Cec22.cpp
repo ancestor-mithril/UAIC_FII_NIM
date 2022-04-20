@@ -585,6 +585,7 @@ double schaffer_F7_func(const std::vector<double>& x, std::vector<double>& aux,
                         const std::vector<std::vector<double>>& rotate,
                         bool shiftFlag, [[maybe_unused]] bool rotateFlag)
 {
+    // schaffer_F7_func is wrong, it's not rotated
     shiftRotateTransform(x, aux, shift, rotate, 1.0, shiftFlag, false);
 
     return do_schaffer_F7_func({aux.begin(), aux.end()});

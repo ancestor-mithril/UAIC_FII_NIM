@@ -26,8 +26,8 @@ std::string getInputDir()
     // TODO: implement recursive search
 }
 
-std::vector<double>
-readCompositeShift(std::size_t dimensions, int rows, int index, bool shiftFlag)
+std::vector<double> readCompositeShift(std::size_t dimensions, std::size_t rows,
+                                       int index, bool shiftFlag)
 {
     if (not shiftFlag) {
         return {};
