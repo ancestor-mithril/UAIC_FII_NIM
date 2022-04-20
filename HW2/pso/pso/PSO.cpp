@@ -104,7 +104,7 @@ PSO::PSO(std::string_view functionName,
 
 bool PSO::stop() const
 {
-    return globalBestEval <= constants::best;
+    return globalBestEval <= constants::best or currentEpoch > 10000;
 }
 
 int PSO::getCacheHits() const
@@ -126,19 +126,23 @@ double PSO::run()
     }
     // std::cout << "Epochs done: " << currentEpoch << std::endl;
     //           << functionManager.getMinimum() << std::endl;
-    std::cout << "Cache hits: " << getCacheHits() << std::endl;
+    // std::cout << "Cache hits: " << getCacheHits() << std::endl;
     return globalBestEval;
 }
 
 void PSO::runInternal()
 {
+    // TODO: use a better stopping criterion
     while (not stop()) {
 
+        // TODO: do updateVelocity and update best in separate loop
+        // parallelize update velocity
         for (auto i = 0; i < populationSize; ++i) {
             updateVelocity(i);
             updateBest(i);
         }
-
+        // std::cout << currentEpoch << ' ' << functionManager.hitCount() << ' '
+        // << functionManager.getEpsilon() << std::endl;
         ++currentEpoch;
         ++lastImprovement; // if we had improvement, it was already reset to 0,
                            // now it's 1
@@ -153,7 +157,10 @@ void PSO::updateBest(int i)
         populationPastBests[i] = population[i];
 
         if (current < globalBestEval) {
-            // std::cout << "BEST: " << current << '\n';
+
+            // std::cout << functionManager.getFunctionName()
+            //           << " Epoch: " << currentEpoch << " BEST: " << current
+            //           << '\n';
             globalBestEval = current;
             globalBest = population[i];
 
@@ -168,15 +175,15 @@ void PSO::updateVelocity(int i)
     const auto rg = randomDouble(gen);
 
     for (auto d = 0; d < dimensions; ++d) {
-        // TODO: use parameter for 0.001
         if (augment and randomDouble(gen) < chaosCoef) {
             populationVelocity[i][d] = randomFromDomainRange(gen);
+        } else {
+            populationVelocity[i][d] =
+                inertia * populationVelocity[i][d] +
+                cognition * rp *
+                    (populationPastBests[i][d] - population[i][d]) +
+                social * rg * (globalBest[d] - population[i][d]);
         }
-
-        populationVelocity[i][d] =
-            inertia * populationVelocity[i][d] +
-            cognition * rp * (populationPastBests[i][d] - population[i][d]) +
-            social * rg * (globalBest[d] - population[i][d]);
 
         if (populationVelocity[i][d] > constants::valuesRange) {
             populationVelocity[i][d] = constants::valuesRange;

@@ -186,7 +186,6 @@ def hgbat_func(x, nx, Os, Mr, s_flag, r_flag):
 
 
 def schaffer_F7_func(x, nx, Os, Mr, s_flag, r_flag):
-
     f = 0.0
     z = sr_func(x, nx, Os, Mr, 1.0, s_flag, r_flag)
     for i in range(nx - 1):

@@ -5,8 +5,15 @@
 
 namespace function_layer::cache_layer {
 
-struct CacheLayer {
-  public:
+// TODO: use templates and concepts
+// TODO: use static polymorphism
+
+struct VectorCache {
+    std::vector<std::vector<double>> cache;
+    std::vector<double> values;
+};
+
+struct MapLayer {
     // map because we need lower_bound
     std::map<std::vector<double>, double> cache;
     // this will be slow. Key is huge, but value is small. It would be more

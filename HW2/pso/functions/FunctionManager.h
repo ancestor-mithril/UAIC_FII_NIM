@@ -31,24 +31,32 @@ class FunctionManager
     {
         return minimum;
     }
+    double getEpsilon() const
+    {
+        return epsilon;
+    }
+    std::string getFunctionName() const
+    {
+        return functionName;
+    }
 
   private:
     double callFunction(const std::vector<double>& x, std::vector<double>& aux);
-    double callFunctionAndUpdateCache(
-        const std::vector<double>& x, std::vector<double>& aux,
-        std::map<std::vector<double>, double>::const_iterator it);
+    double callFunctionAndUpdateCache(const std::vector<double>& x,
+                                      std::vector<double>& aux);
 
     // TODO: Reorder
     const std::string functionName;
-    const int maxFes;
-    const double epsilon; // Maybe this should be dinamically adjusted
+    const int maxFes = 200'000;
+    double epsilon = 0.1;
+    const double decayStep = 0.0;
     double minimum = std::numeric_limits<double>::infinity();
     int functionCalls = 0;
     int cacheHits = 0;
 
     std::function<double(const std::vector<double>&, std::vector<double>&)>
         function;
-    cache_layer::CacheLayer cache;
+    cache_layer::VectorCache cache;
 };
 
 } // namespace function_layer
