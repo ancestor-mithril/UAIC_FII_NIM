@@ -37,21 +37,20 @@ void shiftfunc(const std::vector<double>& x, std::vector<double>& aux,
     // TODO: Check what nethods can be vectorized
 }
 
-void rotatefunc(std::vector<double>& aux, std::vector<double>& aux2,
+void rotatefunc(std::vector<double>& vec, std::vector<double>& aux,
                 const matrix_begin rotateBegin)
 {
-    // assuming x.size() == rotate.size() == rotate[0].size() <= aux.size()
-    const auto n = aux.size();
-    const auto aux2Begin = aux2.begin();
-    std::fill(aux2Begin, std::next(aux2Begin, n), 0.0); // setting aux with 0.0
+    // assuming vec.size() == rotate.size() == rotate[0].size() == aux.size()
+    const auto n = vec.size();
+    const auto auxBegin = aux.begin();
+    std::fill(auxBegin, std::next(auxBegin, n), 0.0); // setting aux with 0.0
     for (std::size_t i = 0; i < n; ++i) {
         for (std::size_t j = 0; j < n; ++j) {
-            aux2[i] +=
-                aux[j] * (*std::next(rotateBegin,
-                                     i))[j]; // rotate[i][j] but with iterators
+            aux[i] += vec[j] * rotateBegin[i][j];
+            // accesing iterator as if it were a matrix
         }
     }
-    std::swap(aux2, aux);
+    std::swap(aux, vec);
 }
 
 // const VectorRange is misleading. Value of iterators can change, the position
@@ -69,9 +68,12 @@ void shiftRotateTransform(const std::vector<double>& x,
                           const matrix_begin rotateBegin, double shiftRate,
                           bool shiftFlag, bool rotateFlag)
 {
-    // template bool and if constexpr
+    // We better provide different overloads for each situation, instead of
+    // having conditionals in this function
     if (shiftFlag) [[likely]] {
         shiftfunc(x, aux, shiftBegin);
+    } else [[unlikely]] {
+        std::copy(x.begin(), x.end(), aux.begin());
     }
 
     // should we check if shift rate is 1.0? Or should we provide a different
@@ -81,7 +83,7 @@ void shiftRotateTransform(const std::vector<double>& x,
         std::bind(std::multiplies<double>(), std::placeholders::_1, shiftRate));
 
     if (rotateFlag) [[likely]] {
-        auto aux2 = aux; //
+        auto aux2 = aux; // TODO: add another aux vector
         rotatefunc(aux, aux2, rotateBegin);
     }
     // print_vec(aux);
@@ -695,7 +697,7 @@ hf01(const std::vector<double>& x, std::vector<double>& aux,
 {
     // [0.4, 0.4, 0.2]
     shiftRotateTransform(x, aux, shift, rotate, 1.0, shiftFlag, rotateFlag);
-    auto aux2 = aux;
+    auto aux2 = aux; // TODO: see if we can use a 2nd aux vector
     applyPermutation(aux, aux2, indices);
 
     const auto limit = std::ceil(0.4 * aux.size());

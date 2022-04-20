@@ -168,7 +168,7 @@ std::vector<std::size_t> readShuffle(std::size_t dimensions, int index)
     return x;
 }
 
-std::function<double(std::vector<double>&, std::vector<double>&)>
+std::function<double(const std::vector<double>&, std::vector<double>&)>
 initFunction(const std::string& functionName, int dimensions, bool shiftFlag,
              bool rotateFlag)
 {
@@ -178,7 +178,7 @@ initFunction(const std::string& functionName, int dimensions, bool shiftFlag,
         std::string,
         std::tuple<int,
                    std::function<double(
-                       std::vector<double>&, std::vector<double>&,
+                       const std::vector<double>&, std::vector<double>&,
                        const std::vector<double>&,
                        const std::vector<std::vector<double>>&, bool, bool)>,
                    double>>
@@ -191,13 +191,13 @@ initFunction(const std::string& functionName, int dimensions, bool shiftFlag,
         };
     const std::unordered_map<
         std::string,
-        std::tuple<
-            int,
-            std::function<double(std::vector<double>&, std::vector<double>&,
-                                 const std::vector<double>&,
-                                 const std::vector<std::vector<double>>&,
-                                 const std::vector<std::size_t>&, bool, bool)>,
-            double>>
+        std::tuple<int,
+                   std::function<double(
+                       const std::vector<double>&, std::vector<double>&,
+                       const std::vector<double>&,
+                       const std::vector<std::vector<double>>&,
+                       const std::vector<std::size_t>&, bool, bool)>,
+                   double>>
         hybridFunctions = {
             {"hf01"s, {6, hf01, 1800.0}},
             {"hf02"s, {7, hf02, 2000.0}},
@@ -207,7 +207,7 @@ initFunction(const std::string& functionName, int dimensions, bool shiftFlag,
         std::string,
         std::tuple<int,
                    std::function<double(
-                       std::vector<double>&, std::vector<double>&,
+                       const std::vector<double>&, std::vector<double>&,
                        const std::vector<double>&,
                        const std::vector<std::vector<double>>&, bool)>,
                    double, int>>
@@ -223,7 +223,7 @@ initFunction(const std::string& functionName, int dimensions, bool shiftFlag,
         return [=, f = std::move(f),
                 shift = readShift(dimensions, index, shiftFlag),
                 rotate = readRotate(dimensions, dimensions, index, rotateFlag)](
-                   std::vector<double>& x, std::vector<double>& aux) {
+                   const std::vector<double>& x, std::vector<double>& aux) {
             return f(x, aux, shift, rotate, shiftFlag, rotateFlag);
             // + fStar;
         };
@@ -235,7 +235,7 @@ initFunction(const std::string& functionName, int dimensions, bool shiftFlag,
                 shift = readShift(dimensions, index, shiftFlag),
                 rotate = readRotate(dimensions, dimensions, index, rotateFlag),
                 indices = readShuffle(dimensions, index)](
-                   std::vector<double>& x, std::vector<double>& aux) {
+                   const std::vector<double>& x, std::vector<double>& aux) {
             return f(x, aux, shift, rotate, indices, shiftFlag, rotateFlag);
             // + fStar;
         };
@@ -246,7 +246,7 @@ initFunction(const std::string& functionName, int dimensions, bool shiftFlag,
         return [=, f = std::move(f),
                 shift = readCompositeShift(dimensions, n, index, true),
                 rotate = readRotate(dimensions * n, dimensions, index, true)](
-                   std::vector<double>& x, std::vector<double>& aux) {
+                   const std::vector<double>& x, std::vector<double>& aux) {
             return f(x, aux, shift, rotate, true); // always rotate
             // + fStar;
         };
@@ -285,13 +285,14 @@ FunctionManager::FunctionManager(std::string_view function, int dimensions,
     }
 }
 
-double FunctionManager::cheat(std::vector<double>& x, std::vector<double>& aux)
+double
+FunctionManager::cheat(const std::vector<double>& x, std::vector<double>& aux)
 {
     return function(x, aux);
 }
 
-double
-FunctionManager::operator()(std::vector<double>& x, std::vector<double>& aux)
+double FunctionManager::operator()(const std::vector<double>& x,
+                                   std::vector<double>& aux)
 {
     // TODO: Add searching strategy (verify all, find, lowe_bound, between lower
     // and upper bound)
@@ -319,7 +320,7 @@ FunctionManager::operator()(std::vector<double>& x, std::vector<double>& aux)
 }
 
 double FunctionManager::callFunctionAndUpdateCache(
-    std::vector<double>& x, std::vector<double>& aux,
+    const std::vector<double>& x, std::vector<double>& aux,
     std::map<std::vector<double>, double>::const_iterator it)
 {
     auto value = callFunction(x, aux);
@@ -328,8 +329,8 @@ double FunctionManager::callFunctionAndUpdateCache(
     return value;
 }
 
-double
-FunctionManager::callFunction(std::vector<double>& x, std::vector<double>& aux)
+double FunctionManager::callFunction(const std::vector<double>& x,
+                                     std::vector<double>& aux)
 {
     ++functionCalls;
     if (functionCalls > maxFes) {

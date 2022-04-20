@@ -16,7 +16,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     // std::cout << cec22::sanity_check() << '\n';
     // runDefault();
     // runTest();
-    runExperiment(10, 1.0, 1.0, 1.0, 0.001, true);
+    runExperiment(10, 0.3, 1.0, 3.0, 0.001, true);
     return 0;
 }
 
@@ -98,21 +98,22 @@ void runExperiment(int dimensions, double inertia, double cognition,
                                               "cf02",
                                               "cf03",
                                               "cf04"};
-    auto ret = std::vector<double>(30, -100.0);
     for (auto& f : functions) {
         auto rez = run30Times(f, dimensions, inertia, cognition, social,
                               chaosCoef, augment);
-        std::cout << f << std::endl;
-        std::transform(ret.begin(), ret.end(), rez.begin(), ret.begin(),
-                       std::plus<double>());
+        const auto mean =
+            std::accumulate(rez.begin(), rez.end(), 0.0) / rez.size();
+        std::cout << f << " " << mean << std::endl;
+
+        auto fileName =
+            "experiments/" + f + '_' + std::to_string(dimensions) + '_' +
+            std::to_string(inertia) + '_' + std::to_string(cognition) + '_' +
+            std::to_string(social) + '_' + std::to_string(chaosCoef) + '_' +
+            std::to_string(augment);
+        std::ofstream file{fileName};
+        for (auto x : rez) {
+            file << x << ' ';
+        }
+        file << '\n';
     }
-    auto fileName = "experiments/" + std::to_string(dimensions) + '_' +
-                    std::to_string(inertia) + '_' + std::to_string(cognition) +
-                    '_' + std::to_string(social) + '_' +
-                    std::to_string(chaosCoef) + '_' + std::to_string(augment);
-    std::ofstream file{fileName};
-    for (auto x : ret) {
-        file << x << ' ';
-    }
-    file << '\n';
 }

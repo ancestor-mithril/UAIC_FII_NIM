@@ -126,6 +126,7 @@ double PSO::run()
     }
     // std::cout << "Epochs done: " << currentEpoch << std::endl;
     //           << functionManager.getMinimum() << std::endl;
+    std::cout << "Cache hits: " << getCacheHits() << std::endl;
     return globalBestEval;
 }
 

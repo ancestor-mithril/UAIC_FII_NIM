@@ -17,8 +17,8 @@ class FunctionManager
     FunctionManager(std::string_view functionName, int dimensions,
                     bool shiftFlag, bool rotateFlag);
 
-    double operator()(std::vector<double>& x, std::vector<double>& aux);
-    double cheat(std::vector<double>& x, std::vector<double>& aux);
+    double operator()(const std::vector<double>& x, std::vector<double>& aux);
+    double cheat(const std::vector<double>& x, std::vector<double>& aux);
     int missCount() const
     {
         return functionCalls;
@@ -33,9 +33,9 @@ class FunctionManager
     }
 
   private:
-    double callFunction(std::vector<double>& x, std::vector<double>& aux);
+    double callFunction(const std::vector<double>& x, std::vector<double>& aux);
     double callFunctionAndUpdateCache(
-        std::vector<double>& x, std::vector<double>& aux,
+        const std::vector<double>& x, std::vector<double>& aux,
         std::map<std::vector<double>, double>::const_iterator it);
 
     // TODO: Reorder
@@ -46,7 +46,8 @@ class FunctionManager
     int functionCalls = 0;
     int cacheHits = 0;
 
-    std::function<double(std::vector<double>&, std::vector<double>&)> function;
+    std::function<double(const std::vector<double>&, std::vector<double>&)>
+        function;
     cache_layer::CacheLayer cache;
 };
 
