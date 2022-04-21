@@ -69,7 +69,9 @@ runOnce(std::string_view functionName, int dimensions, double inertia,
 {
     auto pso = pso::PSO(functionName, dimensions, 500, inertia, cognition,
                         social, chaosCoef, augment, true, true);
-    return std::make_pair(pso.run(), pso.getCacheHits());
+    auto value = pso.run();
+    auto cacheHits = pso.getCacheHits();
+    return {value, cacheHits};
 }
 
 std::vector<std::pair<double, int>>
@@ -102,7 +104,7 @@ runForFunction(std::string_view f, int dimensions, double inertia,
                     std::to_string(dimensions) + '_' + std::to_string(inertia) +
                     '_' + std::to_string(cognition) + '_' +
                     std::to_string(social) + '_' + std::to_string(chaosCoef) +
-                    '_' + std::to_string(augment);
+                    '_' + std::to_string(augment) + "2";
     std::ofstream file{fileName};
     for (auto [x, _] : rez) {
         file << x << ' ';
@@ -135,7 +137,7 @@ void runExperiment(int dimensions, double inertia, double cognition,
     };
 
     std::vector<std::jthread> futures;
-    futures.reserve(30);
+    futures.reserve(12);
     for (auto& f : functions) {
         futures.push_back(std::jthread{runForFunction, f, dimensions, inertia,
                                        cognition, social, chaosCoef, augment});

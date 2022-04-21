@@ -337,13 +337,13 @@ void oldImpl()
 double FunctionManager::operator()(const std::vector<double>& x,
                                    std::vector<double>& aux)
 {
-    // // TODO: Use boost combine
-    // for (std::size_t i = 0, n = cache.cache.size(); i < n; ++i) {
-    //     if (utils::l2distance(x, cache.cache[i]) < epsilon) {
-    //         ++cacheHits;
-    //         return cache.values[i];
-    //     }
-    // }
+    // TODO: Use boost combine
+    for (std::size_t i = 0, n = cache.cache.size(); i < n; ++i) {
+        if (utils::l2distance(x, cache.cache[i]) < epsilon) {
+            ++cacheHits;
+            return cache.values[i];
+        }
+    }
     return callFunctionAndUpdateCache(x, aux);
 }
 
