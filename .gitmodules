@@ -1,0 +1,3 @@
+[submodule "HW2/KDTree"]
+	path = HW2/KDTree
+	url = https://github.com/ancestor-mithril/KDTree.git
