@@ -38,12 +38,11 @@ class KDTreeCache
     std::optional<double> retrieve(const point_t& point, double epsilon)
     {
         try {
-            const auto index = kdtree.nearestIndex(point);
-            if (utils::l2dSquared(point, points[index]) < epsilon) {
+            const auto [index, value] = kdtree.nearestIndexAndValue(point);
+            if (value < epsilon) {
                 return values[index];
             }
         } catch (const std::logic_error& e) {
-            std::cout << "Declansatorul" << std::endl;
             // root is empty
         }
         return std::nullopt;
