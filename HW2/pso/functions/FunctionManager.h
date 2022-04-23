@@ -56,7 +56,7 @@ class FunctionManager
 
     std::function<double(const std::vector<double>&, std::vector<double>&)>
         function;
-    cache_layer::VectorCache cache;
+    cache_layer::KDTreeCache cache;
 };
 
 } // namespace function_layer

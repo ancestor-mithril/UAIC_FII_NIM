@@ -1,31 +1,89 @@
 #pragma once
 
+#include "../../KDTree/KDTree.hpp"
+#include "../utils/Utils.h"
+
+#include <algorithm>
+#include <concepts>
+#include <iostream>
 #include <map>
+#include <optional>
+#include <stdexcept>
 #include <vector>
 
 namespace function_layer::cache_layer {
 
-// TODO: use templates and concepts
-// TODO: use static polymorphism
-
-struct VectorCache {
-    std::vector<std::vector<double>> cache;
+class KDTreeCache
+{
+  public:
+    KDTree kdtree;
+    std::vector<point_t> points;
     std::vector<double> values;
+
+    KDTreeCache() = delete;
+
+    KDTreeCache(int maxFES)
+    {
+        points.reserve(maxFES);
+        values.reserve(maxFES);
+    }
+
+    void insert(const point_t& point, double value)
+    {
+        points.push_back(point);
+        values.push_back(value);
+        kdtree.insert_point(point);
+    }
+
+    std::optional<double> retrieve(const point_t& point, double epsilon)
+    {
+        try {
+            const auto index = kdtree.nearest_index(point);
+            if (utils::l2dSquared(point, points[index]) < epsilon) {
+                return values[index];
+            }
+        } catch (const std::logic_error& e) {
+            std::cout << "Declansatorul" << std::endl;
+            // root is empty
+        }
+        return std::nullopt;
+    }
+
+    std::optional<double>
+    retrievePoints(const point_t& point, double epsilon, const auto& func)
+    {
+        const auto indices = kdtree.neighborhood(point, epsilon);
+        if (indices.empty()) {
+            return std::nullopt;
+        }
+        const auto bestIndex =
+            std::min_element(indices.begin(), indices.end(), func);
+        return values[bestIndex->second];
+    }
+
+    std::optional<double>
+    retrievePointsWorst(const point_t& point, double epsilon)
+    {
+        auto func = [](const auto& a, const auto& b) {
+            return a.first > b.first;
+        };
+        return retrievePoints(point, epsilon, func);
+    }
+
+    std::optional<double>
+    retrievePointsBest(const point_t& point, double epsilon)
+    {
+        return retrievePoints(point, epsilon,
+                              [this](const auto& a, const auto& b) {
+                                  return values[a.second] < values[b.second];
+                              });
+    }
+
+    std::optional<double>
+    retrieveFirstNeighbor(const point_t& point, double epsilon)
+    {
+        return kdtree.firstNeighbor(point, epsilon);
+    }
 };
 
-struct MapLayer {
-    // map because we need lower_bound
-    std::map<std::vector<double>, double> cache;
-    // this will be slow. Key is huge, but value is small. It would be more
-    // efficient to use 2 sorted std::vector.
-
-    // TODO: implement caching strategy (keep-recent) to reduce size
-    // TODO: Add Custom comparator which maintains uniqueness and takes distance
-    // into account.
-    // Solution feasible in a domain in which a1 >= a2 >= .. >= an: L2 norm
-    // L2 norm of such vectors is both unique and offers sorting by
-    // closeness
-
-    // TODO: Another strategy is to use cosine similarity
-};
 } // namespace function_layer::cache_layer

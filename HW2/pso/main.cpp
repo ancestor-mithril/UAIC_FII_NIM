@@ -69,7 +69,9 @@ runOnce(std::string_view functionName, int dimensions, double inertia,
 {
     auto pso = pso::PSO(functionName, dimensions, 500, inertia, cognition,
                         social, chaosCoef, augment, true, true);
+    // TODO: Add time measurements and write them to file
     auto value = pso.run();
+
     auto cacheHits = pso.getCacheHits();
     return {value, cacheHits};
 }
@@ -139,8 +141,13 @@ void runExperiment(int dimensions, double inertia, double cognition,
     std::vector<std::jthread> futures;
     futures.reserve(12);
     for (auto& f : functions) {
-        futures.push_back(std::jthread{runForFunction, f, dimensions, inertia,
-                                       cognition, social, chaosCoef, augment});
+        std::cout << f << std::endl;
+        // futures.push_back(std::jthread{runForFunction, f, dimensions,
+        // inertia,
+        //                                cognition, social, chaosCoef,
+        //                                augment});
+        runForFunction(f, dimensions, inertia, cognition, social, chaosCoef,
+                       augment);
     }
     for (auto& f : futures) {
         f.join();

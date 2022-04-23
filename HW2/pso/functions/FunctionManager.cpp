@@ -269,7 +269,7 @@ initFunction(const std::string& functionName, int dimensions, bool shiftFlag,
 }
 
 constexpr auto maxExpsilon = 0.01;
-constexpr auto minExpsilon = 1e-8;
+constexpr auto minExpsilon = 1e-7;
 
 } // namespace
 
@@ -281,18 +281,12 @@ FunctionManager::FunctionManager(std::string_view function, int dimensions,
     , epsilon{maxExpsilon}
     , decayStep{(maxExpsilon - minExpsilon) / maxFes}
     , function{initFunction(functionName, dimensions, shiftFlag, rotateFlag)}
+    , cache{maxFes}
 // clang-format on
 {
     if ((rotateFlag or shiftFlag) and dimensions != 10 and dimensions != 20) {
         throw std::runtime_error{
             "Can't use rotate or shift for dimensions other than 10 or 20"};
-    }
-    if constexpr (std::is_same<decltype(cache.cache),
-                               std::vector<std::vector<double>>>::value) {
-        // if vector cache use the same size as the number of function
-        // evaluations
-        cache.cache.reserve(maxFes);
-        cache.values.reserve(maxFes);
     }
 }
 
@@ -302,47 +296,16 @@ FunctionManager::cheat(const std::vector<double>& x, std::vector<double>& aux)
     return function(x, aux);
 }
 
-/*
-void oldImpl()
-{
-    // TODO: Add searching strategy (verify all, find, lowe_bound, between lower
-    // and upper bound)
-    auto it = cache.cache.lower_bound(x);
-    if (it == cache.cache.end()) {
-        // iterator hint is useless in this case
-        return callFunctionAndUpdateCache(x, aux, it);
-    }
-
-    // Current solution checks if the alphabetically closest key is also close
-    // in distance. This does not take into account that there could be other
-    // vectors closer in distance but situated somewhere else in the cache.
-
-    // TODO: Use dynamic epsilon.
-    // Use epsilon decay
-    auto value = utils::l2distance(x, it->first);
-    if (value < epsilon) {
-        ++cacheHits;
-        // Both 1e-5 or 1e-6 are pretty small. The vectors cannot deviate too
-        // much in order to trigger cache hit.
-        return it->second;
-    } else if (value < minimum) {
-        minimum = value;
-    }
-
-    // iterator hint is usefull in this case
-    return callFunctionAndUpdateCache(x, aux, it);
-}
-*/
-
 double FunctionManager::operator()(const std::vector<double>& x,
                                    std::vector<double>& aux)
 {
-    // TODO: Use boost combine
-    for (std::size_t i = 0, n = cache.cache.size(); i < n; ++i) {
-        if (utils::l2distance(x, cache.cache[i]) < epsilon) {
-            ++cacheHits;
-            return cache.values[i];
-        }
+    // const auto value = cache.retrieve(x, epsilon);
+    const auto value = cache.retrievePointsBest(x, epsilon);
+    const auto value = cache.retrieveFirstNeighbor(x, epsilon);
+    // const auto value = cache.retrievePointsWorst(x, epsilon);
+    if (value) {
+        ++cacheHits;
+        return *value;
     }
     return callFunctionAndUpdateCache(x, aux);
 }
@@ -352,8 +315,7 @@ double FunctionManager::callFunctionAndUpdateCache(const std::vector<double>& x,
 {
     auto value = callFunction(x, aux);
     // this makes copy
-    cache.cache.push_back(x);
-    cache.values.push_back(value);
+    cache.insert(x, value);
     return value;
 }
 

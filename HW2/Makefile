@@ -1,7 +1,7 @@
 BUILDDIR=build
 APP=app
-OPT=O2
-CMAKE_CXX_FLAGS=-std=c++20 -${OPT} -Wall -Wextra -Wpedantic
+RELEASE=-O3 -DNDEBUG
+CMAKE_CXX_FLAGS=-std=c++20 -Wall -Wextra -Wpedantic
 GCC=g++
 
 builddir:
@@ -17,18 +17,26 @@ format:
 	clang-format -i ./pso/functions/FunctionManager.cpp
 	clang-format -i ./pso/functions/CacheLayer.h
 	clang-format -i ./pso/utils/Utils.h
+	clang-format -i ./pso/utils/Utils.cpp
 	clang-format -i ./pso/utils/Constants.h
 	clang-format -i ./pso/pso/PSO.h
 	clang-format -i ./pso/pso/PSO.cpp
 	clang-format -i ./pso/main.cpp
+	clang-format -i ./KDTree/KDTree.hpp
+	clang-format -i ./KDTree/KDTree.cpp
+	clang-format -i ./KDTree/tests/construction_time.cpp
+	clang-format -i ./KDTree/tests/error_test.cpp
+	clang-format -i ./KDTree/tests/toy_test.cpp
 
 release: builddir
 	cd ${BUILDDIR} \
-	&& ${GCC} ${CMAKE_CXX_FLAGS} -c ../pso/cec22/Cec22.cpp \
-	&& ${GCC} ${CMAKE_CXX_FLAGS} -c ../pso/functions/FunctionManager.cpp \
-	&& ${GCC} ${CMAKE_CXX_FLAGS} -c ../pso/pso/PSO.cpp \
-	&& ${GCC} ${CMAKE_CXX_FLAGS} -c ../pso/main.cpp \
-	&& ${GCC} ${CMAKE_CXX_FLAGS} Cec22.o FunctionManager.o PSO.o main.o -o ${APP}.exe
+	&& ${GCC} ${RELEASE} ${CMAKE_CXX_FLAGS} -c ../pso/cec22/Cec22.cpp \
+	&& ${GCC} ${RELEASE} ${CMAKE_CXX_FLAGS} -c ../pso/functions/FunctionManager.cpp \
+	&& ${GCC} ${RELEASE} ${CMAKE_CXX_FLAGS} -c ../KDTree/KDTree.cpp \
+	&& ${GCC} ${RELEASE} ${CMAKE_CXX_FLAGS} -c ../pso/pso/PSO.cpp \
+	&& ${GCC} ${RELEASE} ${CMAKE_CXX_FLAGS} -c ../pso/utils/Utils.cpp \
+	&& ${GCC} ${RELEASE} ${CMAKE_CXX_FLAGS} -c ../pso/main.cpp \
+	&& ${GCC} ${RELEASE} ${CMAKE_CXX_FLAGS} Cec22.o FunctionManager.o PSO.o main.o KDTree.o Utils.o -o ${APP}.exe
 
 run: release
 	./${BUILDDIR}/${APP}.exe

@@ -87,14 +87,11 @@ PSO::PSO(std::string_view functionName,
         populationSize, std::vector<double>(dimensions));
     populationPastBestEval.resize(populationSize);
     globalBest.resize(dimensions);
-
     for (auto i = 0; i < populationSize; ++i) {
         randomizeVector(population[i], randomFromDomain, gen);
         randomizeVector(populationVelocity[i], randomFromDomainRange, gen);
-
         populationPastBests[i] = population[i];
         populationPastBestEval[i] = functionManager(population[i], aux[i]);
-
         if (populationPastBestEval[i] < globalBestEval) {
             globalBestEval = populationPastBestEval[i];
             globalBest = population[i];
@@ -134,6 +131,9 @@ void PSO::runInternal()
 {
     // TODO: use a better stopping criterion
     while (not stop()) {
+        // if (currentEpoch % 200 == 0) {
+        //     std::cout << currentEpoch << std::endl;
+        // }
 
         // TODO: do updateVelocity and update best in separate loop
         // parallelize update velocity
