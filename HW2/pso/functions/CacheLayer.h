@@ -32,13 +32,13 @@ class KDTreeCache
     {
         points.push_back(point);
         values.push_back(value);
-        kdtree.insert_point(point);
+        kdtree.insertPoint(point);
     }
 
     std::optional<double> retrieve(const point_t& point, double epsilon)
     {
         try {
-            const auto index = kdtree.nearest_index(point);
+            const auto index = kdtree.nearestIndex(point);
             if (utils::l2dSquared(point, points[index]) < epsilon) {
                 return values[index];
             }
@@ -58,15 +58,13 @@ class KDTreeCache
         }
         const auto bestIndex =
             std::min_element(indices.begin(), indices.end(), func);
-        return values[bestIndex->second];
+        return values[*bestIndex];
     }
 
     std::optional<double>
     retrievePointsWorst(const point_t& point, double epsilon)
     {
-        auto func = [](const auto& a, const auto& b) {
-            return a.first > b.first;
-        };
+        auto func = [](const auto a, const auto b) { return a > b; };
         return retrievePoints(point, epsilon, func);
     }
 
@@ -74,8 +72,8 @@ class KDTreeCache
     retrievePointsBest(const point_t& point, double epsilon)
     {
         return retrievePoints(point, epsilon,
-                              [this](const auto& a, const auto& b) {
-                                  return values[a.second] < values[b.second];
+                              [this](const auto a, const auto b) {
+                                  return values[a] < values[b];
                               });
     }
 
