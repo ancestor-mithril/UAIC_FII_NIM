@@ -300,7 +300,7 @@ double FunctionManager::operator()(const std::vector<double>& x,
                                    std::vector<double>& aux)
 {
     // const auto value = cache.retrieve(x, epsilon);
-    const auto value = cache.retrievePointsBest(x, epsilon);
+    // const auto value = cache.retrievePointsBest(x, epsilon);
     const auto value = cache.retrieveFirstNeighbor(x, epsilon);
     // const auto value = cache.retrievePointsWorst(x, epsilon);
     if (value) {
