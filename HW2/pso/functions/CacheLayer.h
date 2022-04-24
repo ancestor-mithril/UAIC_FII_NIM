@@ -29,16 +29,52 @@ concept IndexComparator = std::predicate<T, std::size_t, std::size_t> &&
 class KDTreeCache
 {
   public:
+    enum class CacheRetrievalStrategy {
+        Nearest,
+        BestNeigbor,
+        WorstNeighbor,
+        FirstNeighbor,
+    };
+
     KDTree kdtree;
     std::vector<point_t> points;
     std::vector<double> values;
+    std::function<std::optional<double>(const point_t& point, double epsilon)> retrievalStrategy;
 
     KDTreeCache() = delete;
 
-    KDTreeCache(int maxFES)
+    KDTreeCache(int maxFES, CacheRetrievalStrategy type)
     {
         points.reserve(maxFES);
         values.reserve(maxFES);
+
+        retrievalStrategy = [this, type]() ->  std::function<std::optional<double>(const point_t& point, double epsilon)> {
+            if (type == CacheRetrievalStrategy::Nearest) {
+                return [this](const point_t& point, double epsilon) {
+                    return retrieve(point, epsilon);
+                };
+            } 
+            if (type == CacheRetrievalStrategy::BestNeigbor) {
+                return [this](const point_t& point, double epsilon) {
+                    return retrievePointsBest(point, epsilon);
+                };
+            }
+            if (type == CacheRetrievalStrategy::WorstNeighbor) {
+                return [this](const point_t& point, double epsilon) {
+                    return retrievePointsWorst(point, epsilon);
+                };
+            }
+            return [this](const point_t& point, double epsilon) {
+                    return retrieveFirstNeighbor(point, epsilon);
+                };
+        }();
+    }
+
+
+
+    void recreate()
+    {
+        kdtree = KDTree(points);
     }
 
     void insert(const point_t& point, double value)

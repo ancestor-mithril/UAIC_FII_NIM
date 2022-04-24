@@ -15,6 +15,7 @@ class FunctionManager
 {
   public:
     FunctionManager(std::string_view functionName, int dimensions,
+                    cache_layer::KDTreeCache::CacheRetrievalStrategy cacheRestrievalStrategy,
                     bool shiftFlag, bool rotateFlag);
 
     double operator()(const std::vector<double>& x, std::vector<double>& aux);

@@ -46,10 +46,12 @@ PSO getDefault(std::string_view functionName, int dimensions)
         functionName,
         dimensions,
         100,   // populationSize
+        100,   // resetThreshold
         0.3,   // inertia
         1,     // cognition
         3,     // social
         0.001, // chaosCoef
+        cacheStrategy::Nearest,
         true,  // augment
         true,  // shiftFlag
         true   // rotateFlag
@@ -60,15 +62,18 @@ PSO getDefault(std::string_view functionName, int dimensions)
 PSO::PSO(std::string_view functionName,
         int dimensions,
         int populationSize,
+        int resetThreshold,
         double inertia,
         double cognition,
         double social,
         double chaosCoef,
+        cacheStrategy cacheRetrievalStrategy,
         bool augment,
         bool shiftFlag,
         bool rotateFlag)
-    : functionManager{functionName, dimensions, shiftFlag, rotateFlag}
+    : functionManager{functionName, dimensions, cacheRetrievalStrategy, shiftFlag, rotateFlag}
     , dimensions{dimensions}
+    , resetThreshold{resetThreshold}
     , populationSize{populationSize}
     , inertia{inertia}
     , cognition{cognition}
@@ -94,6 +99,25 @@ PSO::PSO(std::string_view functionName,
         populationPastBestEval[i] = functionManager(population[i], aux[i]);
         if (populationPastBestEval[i] < globalBestEval) {
             globalBestEval = populationPastBestEval[i];
+            globalBest = population[i];
+        }
+    }
+}
+
+void PSO::resetPopulation()
+{
+    for (auto i = 0; i < populationSize; ++i) {
+        randomizeVector(population[i], randomFromDomain, gen);
+        randomizeVector(populationVelocity[i], randomFromDomainRange, gen);
+        double particleValue = functionManager(population[i], aux[i]);
+        if(particleValue < populationPastBestEval[i])
+        {
+            populationPastBests[i] = population[i];
+            populationPastBestEval[i] = particleValue;
+        }
+
+        if (particleValue < globalBestEval) {
+            globalBestEval = particleValue;
             globalBest = population[i];
         }
     }
@@ -134,6 +158,12 @@ void PSO::runInternal()
         // if (currentEpoch % 200 == 0) {
         //     std::cout << currentEpoch << std::endl;
         // }
+
+        if(lastImprovement > resetThreshold)
+        {
+            std::cout << "Reset at epoch: " << currentEpoch << std::endl;
+            resetPopulation();
+        }
 
         // TODO: do updateVelocity and update best in separate loop
         // parallelize update velocity
