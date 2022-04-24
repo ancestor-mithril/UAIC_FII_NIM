@@ -8,8 +8,11 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <limits>
 
 namespace pso {
+
+using cacheStrategy = function_layer::cache_layer::KDTreeCache::CacheRetrievalStrategy;
 
 class PSO
 {
@@ -18,10 +21,12 @@ class PSO
     PSO(std::string_view functionName,
         int dimensions,
         int populationSize,
+        int resetThreshold,
         double inertia,
         double cognition,
         double social,
         double chaosCoef,
+        cacheStrategy cacheRetrievalStrategy,
         bool augment,
         bool shiftFlag,
         bool rotateFlag);
@@ -34,6 +39,7 @@ class PSO
 
   private:
     void runInternal();
+    void resetPopulation();
     void updateVelocity(int i);
     void updateBest(int i);
     bool stop() const;
@@ -58,6 +64,7 @@ class PSO
     double globalBestEval = std::numeric_limits<double>::infinity();
 
     const int dimensions;
+    int resetThreshold = std::numeric_limits<int>::infinity();
     const int populationSize;
     int currentEpoch = 0;
     int lastImprovement = 0;

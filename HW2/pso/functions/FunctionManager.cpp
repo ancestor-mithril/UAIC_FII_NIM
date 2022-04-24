@@ -269,11 +269,12 @@ initFunction(const std::string& functionName, int dimensions, bool shiftFlag,
 }
 
 constexpr auto maxExpsilon = 0.01;
-constexpr auto minExpsilon = 1e-7;
+constexpr auto minExpsilon = 1e-15;
 
 } // namespace
 
 FunctionManager::FunctionManager(std::string_view function, int dimensions,
+                                 cache_layer::KDTreeCache::CacheRetrievalStrategy cacheRestrievalStrategy,
                                  bool shiftFlag, bool rotateFlag)
     // clang-format off
     : functionName{function}
@@ -281,7 +282,7 @@ FunctionManager::FunctionManager(std::string_view function, int dimensions,
     , epsilon{maxExpsilon}
     , decayStep{(maxExpsilon - minExpsilon) / maxFes}
     , function{initFunction(functionName, dimensions, shiftFlag, rotateFlag)}
-    , cache{maxFes}
+    , cache{maxFes, cacheRestrievalStrategy}
 // clang-format on
 {
     if ((rotateFlag or shiftFlag) and dimensions != 10 and dimensions != 20) {
@@ -299,11 +300,11 @@ FunctionManager::cheat(const std::vector<double>& x, std::vector<double>& aux)
 double FunctionManager::operator()(const std::vector<double>& x,
                                    std::vector<double>& aux)
 {
-    // TODO: Add choosing strategy here
-    const auto value = cache.retrieve(x, epsilon);
-    // const auto value = cache.retrievePointsBest(x, epsilon);
-    // const auto value = cache.retrieveFirstNeighbor(x, epsilon);
-    // const auto value = cache.retrievePointsWorst(x, epsilon);
+    if ((functionCalls - 1) % (maxFes / 200) == 0) {
+        cache.recreate();
+    }
+    
+    const auto value = cache.retrievalStrategy(x, epsilon);
     if (value) {
         ++cacheHits;
         return *value;
