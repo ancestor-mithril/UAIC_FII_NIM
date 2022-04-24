@@ -2,6 +2,7 @@
 #include "functions/FunctionManager.h"
 #include "pso/PSO.h"
 
+#include <chrono>
 #include <execution>
 #include <fstream>
 #include <iostream>
@@ -93,14 +94,19 @@ double
 runForFunction(std::string_view f, int dimensions, double inertia,
                double cognition, double social, double chaosCoef, bool augment)
 {
+    const auto start = std::chrono::high_resolution_clock::now();
     auto rez = run30Times(f, dimensions, inertia, cognition, social, chaosCoef,
                           augment);
+    const auto end = std::chrono::high_resolution_clock::now();
+    const auto duration =
+        std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     const auto mean = std::accumulate(rez.begin(), rez.end(), 0.0,
                                       [](auto f, auto elem) {
                                           return std::move(f) + elem.first;
                                       }) /
                       rez.size();
-    std::cout << f << " " << mean << std::endl;
+    std::cout << f << " " << mean << " and took " << duration.count()
+              << " milliseconds" << std::endl;
 
     auto fileName = "experiments/" + std::string{f} + '_' +
                     std::to_string(dimensions) + '_' + std::to_string(inertia) +
@@ -141,7 +147,6 @@ void runExperiment(int dimensions, double inertia, double cognition,
     std::vector<std::jthread> futures;
     futures.reserve(12);
     for (auto& f : functions) {
-        std::cout << f << std::endl;
         // futures.push_back(std::jthread{runForFunction, f, dimensions,
         // inertia,
         //                                cognition, social, chaosCoef,

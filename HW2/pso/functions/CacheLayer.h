@@ -6,13 +6,26 @@
 #include <algorithm>
 #include <concepts>
 #include <iostream>
-#include <map>
 #include <optional>
 #include <stdexcept>
 #include <vector>
 
 namespace function_layer::cache_layer {
 
+namespace {
+
+// TODO: maybe move somewhere else (utils?, new file with all concepts used?)
+
+template <typename T>
+concept IndexComparator = std::predicate<T, std::size_t, std::size_t> &&
+    std::move_constructible<T> && std::copy_constructible<T>;
+// cannot be called without a predicate (invokable that returns bool) that takes
+// two std::size_t arguments
+// cannot be called without a move-constructible and copy-constructible type
+
+} // namespace
+
+// TODO: Use more concepts to accept more types (std::is_array<T> or ...)
 class KDTreeCache
 {
   public:
@@ -48,8 +61,8 @@ class KDTreeCache
         return std::nullopt;
     }
 
-    std::optional<double>
-    retrievePoints(const point_t& point, double epsilon, const auto& func)
+    std::optional<double> retrievePoints(const point_t& point, double epsilon,
+                                         IndexComparator auto&& func)
     {
         const auto indices = kdtree.neighborhood(point, epsilon);
         if (indices.empty()) {
@@ -63,15 +76,19 @@ class KDTreeCache
     std::optional<double>
     retrievePointsWorst(const point_t& point, double epsilon)
     {
-        auto func = [](const auto a, const auto b) { return a > b; };
-        return retrievePoints(point, epsilon, func);
+        return retrievePoints(point, epsilon,
+                              [this](const std::unsigned_integral auto a,
+                                     const std::unsigned_integral auto b) {
+                                  return values[a] > values[b];
+                              });
     }
 
     std::optional<double>
     retrievePointsBest(const point_t& point, double epsilon)
     {
         return retrievePoints(point, epsilon,
-                              [this](const auto a, const auto b) {
+                              [this](const std::unsigned_integral auto a,
+                                     const std::unsigned_integral auto b) {
                                   return values[a] < values[b];
                               });
     }
