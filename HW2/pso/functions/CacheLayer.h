@@ -140,7 +140,11 @@ class KDTreeCache
     retrieveFirstNeighbor(const point_t& point, double epsilon)
     {
         const auto timer = utils::timer::Timer{"KDTree first neighbor"};
-        return kdtree.firstNeighbor(point, epsilon);
+        const auto index = kdtree.firstNeighbor(point, epsilon);
+        if (index) {
+            return values[*index];
+        }
+        return std::nullopt;
     }
 };
 

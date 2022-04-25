@@ -29,7 +29,7 @@ public:
         std::stringstream ss;
         ss << "Timer statistics:\n";
         for (const auto& [name, time] : timers) {
-            ss << name << ": " << time / 1e6 << " s " << time % (int) 1e6 / 1e3 << " ms\n";
+            ss << name << ": " << time / 1e6 << " s\n";
         }
         return ss.str();
     }

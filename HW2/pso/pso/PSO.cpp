@@ -1,5 +1,6 @@
 #include "PSO.h"
 
+#include <execution>
 #include <iostream>
 #include <stdexcept>
 
@@ -32,7 +33,7 @@ std::string vecToString(const std::vector<double>& v)
     }
     auto ret = "["s + std::to_string(v[0]);
     return std::accumulate(std::next(v.begin()), v.end(), ret,
-                           [](auto&& f, auto x) {
+                           [](auto&& f, const auto x) {
                                return std::move(f) + ","s + std::to_string(x);
                            }) +
            "]"s;
@@ -96,12 +97,15 @@ PSO::PSO(std::string_view functionName,
         populationSize, std::numeric_limits<double>::infinity());
     globalBest.resize(dimensions);
 
+    indices.resize(populationSize);
+    std::iota(indices.begin(), indices.end(), 0);
+
     resetPopulation();
 }
 
 void PSO::resetPopulation()
 {
-    for (auto i = 0; i < populationSize; ++i) {
+    std::for_each(indices.begin(), indices.end(), [this](const auto i) {
         randomizeVector(population[i], randomFromDomain, gen);
         randomizeVector(populationVelocity[i], randomFromDomainRange, gen);
         const auto particleValue = functionManager(population[i], aux[i]);
@@ -117,7 +121,7 @@ void PSO::resetPopulation()
         }
 
         populationInertia[i] = inertia;
-    }
+    });
 }
 
 bool PSO::stop() const
@@ -157,7 +161,7 @@ void PSO::runInternal()
         // }
 
         if (lastImprovement > resetThreshold) {
-            std::cout << "Reset at epoch: " << currentEpoch << std::endl;
+            // std::cout << "Reset at epoch: " << currentEpoch << std::endl;
             resetPopulation();
         }
 
@@ -168,8 +172,7 @@ void PSO::runInternal()
         updateBest();
         updateInertia();
         updateInertia();
-        // std::cout << currentEpoch << ' ' << functionManager.hitCount() << ' '
-        // << functionManager.getEpsilon() << std::endl;
+
         ++currentEpoch;
         ++lastImprovement; // if we had improvement, it was already reset to 0,
                            // now it's 1
@@ -178,53 +181,60 @@ void PSO::runInternal()
 
 void PSO::updateVelocity()
 {
-    for (auto i = 0; i < populationSize; ++i) {
-        const auto rp = randomDouble(gen);
-        const auto rg = randomDouble(gen);
+    // par_unseq or unseq?
+    std::for_each(
+        std::execution::par_unseq, indices.begin(), indices.end(),
+        [this](const auto i) {
+            const auto rCognition = randomDouble(gen);
+            const auto rSocial = randomDouble(gen);
+            const auto rInertia = randomDouble(gen);
 
-        for (auto d = 0; d < dimensions; ++d) {
-            if (augment and randomDouble(gen) < chaosCoef) {
-                populationVelocity[i][d] = randomFromDomainRange(gen);
-            } else {
-                populationVelocity[i][d] =
-                    populationInertia[i] * populationVelocity[i][d] +
-                    cognition * rp *
-                        (populationPastBests[i][d] - population[i][d]) +
-                    social * rg * (globalBest[d] - population[i][d]);
-            }
-
-            if (populationVelocity[i][d] > constants::valuesRange) {
-                populationVelocity[i][d] = constants::valuesRange;
-            } else if (populationVelocity[i][d] < -constants::valuesRange) {
-                populationVelocity[i][d] = -constants::valuesRange;
-            }
-
-            population[i][d] += populationVelocity[i][d];
-
-            // TODO: Add strategy (clipping to domain or reflection)
-
-            // TODO: See if modulo arithmetic can be used in this case.
-            // How would this work: use an usigned to represent [minimum,
-            // maximum] and do operations for unsigneds then convert to double
-            while (population[i][d] < constants::minimum or
-                   population[i][d] > constants::maximum) {
-                if (population[i][d] < constants::minimum) {
-                    population[i][d] =
-                        2 * constants::minimum - population[i][d];
+            for (auto d = 0; d < dimensions; ++d) {
+                if (augment and randomDouble(gen) < chaosCoef) {
+                    populationVelocity[i][d] = randomFromDomainRange(gen);
+                } else {
+                    populationVelocity[i][d] =
+                        rInertia * populationInertia[i] *
+                            populationVelocity[i][d] +
+                        cognition * rCognition *
+                            (populationPastBests[i][d] - population[i][d]) +
+                        social * rSocial * (globalBest[d] - population[i][d]);
                 }
-                if (population[i][d] > constants::maximum) {
-                    population[i][d] =
-                        2 * constants::maximum - population[i][d];
+
+                if (populationVelocity[i][d] > constants::valuesRange) {
+                    populationVelocity[i][d] = constants::valuesRange;
+                } else if (populationVelocity[i][d] < -constants::valuesRange) {
+                    populationVelocity[i][d] = -constants::valuesRange;
+                }
+
+                population[i][d] += populationVelocity[i][d];
+
+                // TODO: Add strategy (clipping to domain or reflection)
+
+                // TODO: See if modulo arithmetic can be used in this case.
+                // How would this work: use an usigned to represent [minimum,
+                // maximum] and do operations for unsigneds then convert to
+                // double
+                while (population[i][d] < constants::minimum or
+                       population[i][d] > constants::maximum) {
+                    if (population[i][d] < constants::minimum) {
+                        population[i][d] =
+                            2 * constants::minimum - population[i][d];
+                    }
+                    if (population[i][d] > constants::maximum) {
+                        population[i][d] =
+                            2 * constants::maximum - population[i][d];
+                    }
                 }
             }
-        }
-    }
+        });
 }
 
 void PSO::evaluate()
 {
-    std::transform(population.begin(), population.end(), aux.begin(),
-                   evaluations.begin(),
+    // par_unseq or unseq?
+    std::transform(std::execution::par_unseq, population.begin(),
+                   population.end(), aux.begin(), evaluations.begin(),
                    [this](const auto& particle, auto& aux) {
                        return functionManager(particle, aux);
                    });
@@ -232,15 +242,13 @@ void PSO::evaluate()
 
 void PSO::updateBest()
 {
-    auto min = std::numeric_limits<double>::infinity();
-    for (auto i = 0; i < populationSize; ++i) {
+    std::for_each(indices.begin(), indices.end(), [this](const auto i) {
         if (evaluations[i] < populationPastBestEval[i]) {
             populationPastBestEval[i] = evaluations[i];
             populationPastBests[i] = population[i];
 
-            if (evaluations[i] < min) {
-                min = evaluations[i];
-
+            // TODO: maybe do update best outside loop
+            if (evaluations[i] < globalBestEval) {
                 // std::cout << functionManager.getFunctionName()
                 //           << " Epoch: " << currentEpoch << " BEST: " <<
                 //           current
@@ -251,17 +259,16 @@ void PSO::updateBest()
                 lastImprovement = 0;
             }
         }
-    }
+    });
 }
 
 void PSO::updateInertia()
 {
     std::transform(
-        evaluations.begin(), evaluations.end(), populationInertia.begin(),
-        [this, globalBestFitness = 1.0 / globalBestEval](auto evaluation) {
-            const auto particleFitness = 1.0 / evaluation;
-            return 1 - (inertia + randomDouble(gen) * particleFitness) /
-                           (globalBestFitness + 0.1);
+        std::execution::unseq, evaluations.begin(), evaluations.end(),
+        populationInertia.begin(), [this](const auto evaluation) {
+            return (inertia + (1.0 - (globalBestEval / evaluation)) * 0.7);
+            //    return 0.2;
         });
 }
 

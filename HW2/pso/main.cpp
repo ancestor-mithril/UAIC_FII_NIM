@@ -19,21 +19,18 @@ void runExperiment(int dimensions, int resetThreshold, double inertia,
                    cacheStrategy cacheRetrievalStrategy, bool augment);
 void timeTest();
 
-
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 {
     // std::cout << cec22::sanity_check() << '\n';
     // runDefault();
     // runTest();
 
-    // runExperiment(10, 200'000, 0.3, 1.0, 3.0, 0.01,
-    //               cacheStrategy::FirstNeighbor, true);
+    runExperiment(10, 200'000, 0.3, 1.0, 3.0, 0.01,
+                  cacheStrategy::FirstNeighbor, true);
 
-    timeTest();
+    // timeTest();
     return 0;
 }
-
-
 
 void runFunction(std::string_view functionName, int dimensions)
 {
@@ -110,11 +107,11 @@ run30Times(std::string_view functionName, int dimensions, int resetThreshold,
 
 void timeTest()
 {
-    for (auto i = 0; i < 500; ++i)
-    {
+    for (auto i = 1; i < 500; ++i) {
+        std::cout << i << std::endl;
         function_layer::FunctionManager::rebalance = i;
-        run30Times("zakharov_func", 10, 200'000, 0.3, 1.0, 3.0, 0.01,
-                              cacheStrategy::FirstNeighbor, true);
+        run30Times("rastrigin_func", 10, 200'000, 0.3, 1.0, 3.0, 0.01,
+                   cacheStrategy::FirstNeighbor, true);
         std::cout << utils::timer::Timer::getStatistics() << std::endl;
         utils::timer::Timer::clean();
     }
@@ -139,9 +136,8 @@ double runForFunction(std::string_view f, int dimensions, int resetThreshold,
                                       }) /
                       rez.size();
 
-    std::cout << f << " " << mean << " and took " << miliseconds / 1000
-              << " seconds " << miliseconds % 1000 << " miliseconds"
-              << std::endl;
+    std::cout << f << " " << mean << " and took " << miliseconds / 1000.0
+              << " seconds " << std::endl;
     std::cout << utils::timer::Timer::getStatistics() << std::endl;
     utils::timer::Timer::clean();
 
@@ -187,12 +183,11 @@ void runExperiment(int dimensions, int resetThreshold, double inertia,
     std::vector<std::jthread> futures;
     futures.reserve(12);
     for (auto& f : functions) {
-        futures.push_back(std::jthread{
-            runForFunction, f, dimensions, resetThreshold, inertia, cognition,
-            social, chaosCoef, cacheRetrievalStrategy, augment});
-        // runForFunction(f, dimensions, resetThreshold, inertia, cognition,
-        // social, chaosCoef,
-        //                augment);
+        // futures.push_back(std::jthread{
+        //     runForFunction, f, dimensions, resetThreshold, inertia,
+        //     cognition, social, chaosCoef, cacheRetrievalStrategy, augment});
+        runForFunction(f, dimensions, resetThreshold, inertia, cognition,
+                       social, chaosCoef, cacheRetrievalStrategy, augment);
     }
     for (auto& f : futures) {
         f.join();

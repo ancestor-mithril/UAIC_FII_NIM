@@ -303,13 +303,13 @@ int FunctionManager::rebalance = 100;
 double FunctionManager::operator()(const std::vector<double>& x,
                                    std::vector<double>& aux)
 {
-    // TODO: Make a test in which for one function called 30 times we change maxFes / x
-    // and check how long does it take to run
+    // TODO: Choose best rebalance
     if ((functionCalls - 1) % (maxFes / rebalance) == 0) {
         cache.recreate();
     }
 
     const auto value = cache.retrievalStrategy(x, epsilon);
+
     if (value) {
         ++cacheHits;
         return *value;

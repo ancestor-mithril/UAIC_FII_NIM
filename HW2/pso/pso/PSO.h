@@ -57,16 +57,6 @@ class PSO
 
     function_layer::FunctionManager functionManager;
 
-    std::vector<std::vector<double>> population;
-    std::vector<std::vector<double>> aux;
-    std::vector<std::vector<double>> populationVelocity;
-    std::vector<std::vector<double>> populationPastBests;
-    std::vector<double> populationInertia;
-    std::vector<double> evaluations;
-    std::vector<double> populationPastBestEval;
-    std::vector<double> globalBest;
-    double globalBestEval = std::numeric_limits<double>::infinity();
-
     const int dimensions;
     const int resetThreshold;
     const int populationSize;
@@ -77,6 +67,17 @@ class PSO
     double cognition;
     double social;
     double chaosCoef;
+
+    std::vector<std::vector<double>> population;
+    std::vector<std::vector<double>> aux;
+    std::vector<std::vector<double>> populationVelocity;
+    std::vector<std::vector<double>> populationPastBests;
+    std::vector<double> populationInertia;
+    std::vector<double> evaluations;
+    std::vector<double> populationPastBestEval;
+    std::vector<double> globalBest;
+    std::vector<std::size_t> indices;
+    double globalBestEval = std::numeric_limits<double>::infinity();
 
     const bool augment;
 };
