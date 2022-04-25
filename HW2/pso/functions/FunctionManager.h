@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../utils/Timer.h"
 #include "CacheLayer.h"
 
 #include <functional>
@@ -15,7 +16,8 @@ class FunctionManager
 {
   public:
     FunctionManager(std::string_view functionName, int dimensions,
-                    cache_layer::KDTreeCache::CacheRetrievalStrategy cacheRestrievalStrategy,
+                    cache_layer::KDTreeCache::CacheRetrievalStrategy
+                        cacheRestrievalStrategy,
                     bool shiftFlag, bool rotateFlag);
 
     double operator()(const std::vector<double>& x, std::vector<double>& aux);
@@ -40,6 +42,8 @@ class FunctionManager
     {
         return functionName;
     }
+
+    static int rebalance;
 
   private:
     double callFunction(const std::vector<double>& x, std::vector<double>& aux);

@@ -52,9 +52,9 @@ PSO getDefault(std::string_view functionName, int dimensions)
         3,     // social
         0.001, // chaosCoef
         cacheStrategy::Nearest,
-        true,  // augment
-        true,  // shiftFlag
-        true   // rotateFlag
+        true, // augment
+        true, // shiftFlag
+        true  // rotateFlag
     };
 }
 
@@ -90,18 +90,13 @@ PSO::PSO(std::string_view functionName,
         populationSize, std::vector<double>(dimensions));
     populationPastBests = std::vector<std::vector<double>>(
         populationSize, std::vector<double>(dimensions));
-    populationPastBestEval.resize(populationSize);
+    populationInertia = std::vector<double>(populationSize);
+    evaluations = std::vector<double>(populationSize);
+    populationPastBestEval = std::vector<double>(
+        populationSize, std::numeric_limits<double>::infinity());
     globalBest.resize(dimensions);
-    for (auto i = 0; i < populationSize; ++i) {
-        randomizeVector(population[i], randomFromDomain, gen);
-        randomizeVector(populationVelocity[i], randomFromDomainRange, gen);
-        populationPastBests[i] = population[i];
-        populationPastBestEval[i] = functionManager(population[i], aux[i]);
-        if (populationPastBestEval[i] < globalBestEval) {
-            globalBestEval = populationPastBestEval[i];
-            globalBest = population[i];
-        }
-    }
+
+    resetPopulation();
 }
 
 void PSO::resetPopulation()
@@ -109,9 +104,9 @@ void PSO::resetPopulation()
     for (auto i = 0; i < populationSize; ++i) {
         randomizeVector(population[i], randomFromDomain, gen);
         randomizeVector(populationVelocity[i], randomFromDomainRange, gen);
-        double particleValue = functionManager(population[i], aux[i]);
-        if(particleValue < populationPastBestEval[i])
-        {
+        const auto particleValue = functionManager(population[i], aux[i]);
+
+        if (particleValue < populationPastBestEval[i]) {
             populationPastBests[i] = population[i];
             populationPastBestEval[i] = particleValue;
         }
@@ -120,6 +115,8 @@ void PSO::resetPopulation()
             globalBestEval = particleValue;
             globalBest = population[i];
         }
+
+        populationInertia[i] = inertia;
     }
 }
 
@@ -159,18 +156,18 @@ void PSO::runInternal()
         //     std::cout << currentEpoch << std::endl;
         // }
 
-        if(lastImprovement > resetThreshold)
-        {
+        if (lastImprovement > resetThreshold) {
             std::cout << "Reset at epoch: " << currentEpoch << std::endl;
             resetPopulation();
         }
 
         // TODO: do updateVelocity and update best in separate loop
         // parallelize update velocity
-        for (auto i = 0; i < populationSize; ++i) {
-            updateVelocity(i);
-            updateBest(i);
-        }
+        updateVelocity();
+        evaluate();
+        updateBest();
+        updateInertia();
+        updateInertia();
         // std::cout << currentEpoch << ' ' << functionManager.hitCount() << ' '
         // << functionManager.getEpsilon() << std::endl;
         ++currentEpoch;
@@ -179,65 +176,93 @@ void PSO::runInternal()
     }
 }
 
-void PSO::updateBest(int i)
+void PSO::updateVelocity()
 {
-    const auto current = functionManager(population[i], aux[i]);
-    if (current < populationPastBestEval[i]) {
-        populationPastBestEval[i] = current;
-        populationPastBests[i] = population[i];
+    for (auto i = 0; i < populationSize; ++i) {
+        const auto rp = randomDouble(gen);
+        const auto rg = randomDouble(gen);
 
-        if (current < globalBestEval) {
+        for (auto d = 0; d < dimensions; ++d) {
+            if (augment and randomDouble(gen) < chaosCoef) {
+                populationVelocity[i][d] = randomFromDomainRange(gen);
+            } else {
+                populationVelocity[i][d] =
+                    populationInertia[i] * populationVelocity[i][d] +
+                    cognition * rp *
+                        (populationPastBests[i][d] - population[i][d]) +
+                    social * rg * (globalBest[d] - population[i][d]);
+            }
 
-            // std::cout << functionManager.getFunctionName()
-            //           << " Epoch: " << currentEpoch << " BEST: " << current
-            //           << '\n';
-            globalBestEval = current;
-            globalBest = population[i];
+            if (populationVelocity[i][d] > constants::valuesRange) {
+                populationVelocity[i][d] = constants::valuesRange;
+            } else if (populationVelocity[i][d] < -constants::valuesRange) {
+                populationVelocity[i][d] = -constants::valuesRange;
+            }
 
-            lastImprovement = 0;
+            population[i][d] += populationVelocity[i][d];
+
+            // TODO: Add strategy (clipping to domain or reflection)
+
+            // TODO: See if modulo arithmetic can be used in this case.
+            // How would this work: use an usigned to represent [minimum,
+            // maximum] and do operations for unsigneds then convert to double
+            while (population[i][d] < constants::minimum or
+                   population[i][d] > constants::maximum) {
+                if (population[i][d] < constants::minimum) {
+                    population[i][d] =
+                        2 * constants::minimum - population[i][d];
+                }
+                if (population[i][d] > constants::maximum) {
+                    population[i][d] =
+                        2 * constants::maximum - population[i][d];
+                }
+            }
         }
     }
 }
 
-void PSO::updateVelocity(int i)
+void PSO::evaluate()
 {
-    const auto rp = randomDouble(gen);
-    const auto rg = randomDouble(gen);
+    std::transform(population.begin(), population.end(), aux.begin(),
+                   evaluations.begin(),
+                   [this](const auto& particle, auto& aux) {
+                       return functionManager(particle, aux);
+                   });
+}
 
-    for (auto d = 0; d < dimensions; ++d) {
-        if (augment and randomDouble(gen) < chaosCoef) {
-            populationVelocity[i][d] = randomFromDomainRange(gen);
-        } else {
-            populationVelocity[i][d] =
-                inertia * populationVelocity[i][d] +
-                cognition * rp *
-                    (populationPastBests[i][d] - population[i][d]) +
-                social * rg * (globalBest[d] - population[i][d]);
-        }
+void PSO::updateBest()
+{
+    auto min = std::numeric_limits<double>::infinity();
+    for (auto i = 0; i < populationSize; ++i) {
+        if (evaluations[i] < populationPastBestEval[i]) {
+            populationPastBestEval[i] = evaluations[i];
+            populationPastBests[i] = population[i];
 
-        if (populationVelocity[i][d] > constants::valuesRange) {
-            populationVelocity[i][d] = constants::valuesRange;
-        } else if (populationVelocity[i][d] < -constants::valuesRange) {
-            populationVelocity[i][d] = -constants::valuesRange;
-        }
+            if (evaluations[i] < min) {
+                min = evaluations[i];
 
-        population[i][d] += populationVelocity[i][d];
+                // std::cout << functionManager.getFunctionName()
+                //           << " Epoch: " << currentEpoch << " BEST: " <<
+                //           current
+                //           << '\n';
+                globalBestEval = evaluations[i];
+                globalBest = population[i];
 
-        // TODO: Add strategy (clipping to domain or reflection)
-
-        // TODO: See if modulo arithmetic can be used in this case.
-        // How would this work: use an usigned to represent [minimum, maximum]
-        // and do operations for unsigneds then convert to double
-        while (population[i][d] < constants::minimum or
-               population[i][d] > constants::maximum) {
-            if (population[i][d] < constants::minimum) {
-                population[i][d] = 2 * constants::minimum - population[i][d];
-            }
-            if (population[i][d] > constants::maximum) {
-                population[i][d] = 2 * constants::maximum - population[i][d];
+                lastImprovement = 0;
             }
         }
     }
+}
+
+void PSO::updateInertia()
+{
+    std::transform(
+        evaluations.begin(), evaluations.end(), populationInertia.begin(),
+        [this, globalBestFitness = 1.0 / globalBestEval](auto evaluation) {
+            const auto particleFitness = 1.0 / evaluation;
+            return 1 - (inertia + randomDouble(gen) * particleFitness) /
+                           (globalBestFitness + 0.1);
+        });
 }
 
 } // namespace pso

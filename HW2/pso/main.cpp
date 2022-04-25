@@ -1,6 +1,7 @@
 #include "cec22/Cec22.h"
 #include "functions/FunctionManager.h"
 #include "pso/PSO.h"
+#include "utils/Timer.h"
 
 #include <chrono>
 #include <execution>
@@ -8,21 +9,31 @@
 #include <iostream>
 #include <thread>
 
-using cacheStrategy = function_layer::cache_layer::KDTreeCache::CacheRetrievalStrategy;
+using cacheStrategy =
+    function_layer::cache_layer::KDTreeCache::CacheRetrievalStrategy;
 
 void runDefault();
 void runTest();
-void runExperiment(int dimensions, int resetThreshold, double inertia, double cognition,
-                   double social, double chaosCoef, cacheStrategy cacheRetrievalStrategy, bool augment);
+void runExperiment(int dimensions, int resetThreshold, double inertia,
+                   double cognition, double social, double chaosCoef,
+                   cacheStrategy cacheRetrievalStrategy, bool augment);
+void timeTest();
+
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 {
     // std::cout << cec22::sanity_check() << '\n';
     // runDefault();
     // runTest();
-    runExperiment(10, 200'000, 0.3, 1.0, 3.0, 0.01, cacheStrategy::Nearest, true);
+
+    // runExperiment(10, 200'000, 0.3, 1.0, 3.0, 0.01,
+    //               cacheStrategy::FirstNeighbor, true);
+
+    timeTest();
     return 0;
 }
+
+
 
 void runFunction(std::string_view functionName, int dimensions)
 {
@@ -53,7 +64,8 @@ void testVector(const std::vector<double>& v, std::string_view func,
 {
     auto x = v;
     auto aux = v;
-    auto f = function_layer::FunctionManager{func, dimensions, cacheStrategy::FirstNeighbor, true, true};
+    auto f = function_layer::FunctionManager{
+        func, dimensions, cacheStrategy::FirstNeighbor, true, true};
     std::cout << f(x, aux);
 }
 
@@ -67,11 +79,13 @@ void runTest()
 }
 
 std::pair<double, int>
-runOnce(std::string_view functionName, int dimensions, int resetThreshold, double inertia,
-        double cognition, double social, double chaosCoef, cacheStrategy cacheRetrievalStrategy, bool augment)
+runOnce(std::string_view functionName, int dimensions, int resetThreshold,
+        double inertia, double cognition, double social, double chaosCoef,
+        cacheStrategy cacheRetrievalStrategy, bool augment)
 {
-    auto pso = pso::PSO(functionName, dimensions, 500, resetThreshold, inertia, cognition,
-                        social, chaosCoef, cacheRetrievalStrategy, augment, true, true);
+    auto pso = pso::PSO(functionName, dimensions, 500, resetThreshold, inertia,
+                        cognition, social, chaosCoef, cacheRetrievalStrategy,
+                        augment, true, true);
     // TODO: Add time measurements and write them to file
     auto value = pso.run();
 
@@ -80,43 +94,64 @@ runOnce(std::string_view functionName, int dimensions, int resetThreshold, doubl
 }
 
 std::vector<std::pair<double, int>>
-run30Times(std::string_view functionName, int dimensions, int resetThreshold, double inertia,
-           double cognition, double social, double chaosCoef, cacheStrategy cacheRetrievalStrategy, bool augment)
+run30Times(std::string_view functionName, int dimensions, int resetThreshold,
+           double inertia, double cognition, double social, double chaosCoef,
+           cacheStrategy cacheRetrievalStrategy, bool augment)
 {
     auto ret = std::vector<std::pair<double, int>>(30, {-100.0, 0});
     std::transform(std::execution::par_unseq, ret.begin(), ret.end(),
                    ret.begin(), [=]([[maybe_unused]] const auto& x) {
-                       return runOnce(functionName, dimensions, resetThreshold, inertia,
-                                      cognition, social, chaosCoef, cacheRetrievalStrategy, augment);
+                       return runOnce(functionName, dimensions, resetThreshold,
+                                      inertia, cognition, social, chaosCoef,
+                                      cacheRetrievalStrategy, augment);
                    });
     return ret;
 }
 
-double
-runForFunction(std::string_view f, int dimensions, int resetThreshold, double inertia,
-               double cognition, double social, double chaosCoef, cacheStrategy cacheRetrievalStrategy, bool augment)
+void timeTest()
+{
+    for (auto i = 0; i < 500; ++i)
+    {
+        function_layer::FunctionManager::rebalance = i;
+        run30Times("zakharov_func", 10, 200'000, 0.3, 1.0, 3.0, 0.01,
+                              cacheStrategy::FirstNeighbor, true);
+        std::cout << utils::timer::Timer::getStatistics() << std::endl;
+        utils::timer::Timer::clean();
+    }
+}
+
+double runForFunction(std::string_view f, int dimensions, int resetThreshold,
+                      double inertia, double cognition, double social,
+                      double chaosCoef, cacheStrategy cacheRetrievalStrategy,
+                      bool augment)
 {
     const auto start = std::chrono::high_resolution_clock::now();
-    auto rez = run30Times(f, dimensions, resetThreshold, inertia,
-                          cognition, social, chaosCoef, cacheRetrievalStrategy, augment);
+    auto rez = run30Times(f, dimensions, resetThreshold, inertia, cognition,
+                          social, chaosCoef, cacheRetrievalStrategy, augment);
     const auto end = std::chrono::high_resolution_clock::now();
     const auto duration =
         std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    const auto miliseconds = duration.count();
+
     const auto mean = std::accumulate(rez.begin(), rez.end(), 0.0,
                                       [](auto f, auto elem) {
                                           return std::move(f) + elem.first;
                                       }) /
                       rez.size();
-    std::cout << f << " " << mean << " and took " << duration.count()
-              << " milliseconds" << std::endl;
+
+    std::cout << f << " " << mean << " and took " << miliseconds / 1000
+              << " seconds " << miliseconds % 1000 << " miliseconds"
+              << std::endl;
+    std::cout << utils::timer::Timer::getStatistics() << std::endl;
+    utils::timer::Timer::clean();
 
     auto fileName = "experiments/" + std::string{f} + '_' +
                     std::to_string(dimensions) + '_' + std::to_string(inertia) +
-                    '_' + std::to_string(resetThreshold) +
-                    '_' + std::to_string(cognition) + '_' +
-                    std::to_string(social) + '_' + std::to_string(chaosCoef) +
-                    '_' + std::to_string((int) cacheRetrievalStrategy) +
-                    '_' + std::to_string(augment) + "2";
+                    '_' + std::to_string(resetThreshold) + '_' +
+                    std::to_string(cognition) + '_' + std::to_string(social) +
+                    '_' + std::to_string(chaosCoef) + '_' +
+                    std::to_string((int)cacheRetrievalStrategy) + '_' +
+                    std::to_string(augment) + "2";
     std::ofstream file{fileName};
     for (auto [x, _] : rez) {
         file << x << ' ';
@@ -130,8 +165,9 @@ runForFunction(std::string_view f, int dimensions, int resetThreshold, double in
     return mean;
 }
 
-void runExperiment(int dimensions, int resetThreshold, double inertia, double cognition,
-                   double social, double chaosCoef, cacheStrategy cacheRetrievalStrategy, bool augment)
+void runExperiment(int dimensions, int resetThreshold, double inertia,
+                   double cognition, double social, double chaosCoef,
+                   cacheStrategy cacheRetrievalStrategy, bool augment)
 {
     auto functions = std::vector<std::string>{
         "zakharov_func",
@@ -151,11 +187,11 @@ void runExperiment(int dimensions, int resetThreshold, double inertia, double co
     std::vector<std::jthread> futures;
     futures.reserve(12);
     for (auto& f : functions) {
-        futures.push_back(std::jthread{runForFunction, f, dimensions,
-                                       resetThreshold, inertia,
-                                       cognition, social, chaosCoef,
-                                       cacheRetrievalStrategy, augment});
-        // runForFunction(f, dimensions, resetThreshold, inertia, cognition, social, chaosCoef,
+        futures.push_back(std::jthread{
+            runForFunction, f, dimensions, resetThreshold, inertia, cognition,
+            social, chaosCoef, cacheRetrievalStrategy, augment});
+        // runForFunction(f, dimensions, resetThreshold, inertia, cognition,
+        // social, chaosCoef,
         //                augment);
     }
     for (auto& f : futures) {

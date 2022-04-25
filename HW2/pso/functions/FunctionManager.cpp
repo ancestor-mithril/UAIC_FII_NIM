@@ -273,9 +273,10 @@ constexpr auto minExpsilon = 1e-15;
 
 } // namespace
 
-FunctionManager::FunctionManager(std::string_view function, int dimensions,
-                                 cache_layer::KDTreeCache::CacheRetrievalStrategy cacheRestrievalStrategy,
-                                 bool shiftFlag, bool rotateFlag)
+FunctionManager::FunctionManager(
+    std::string_view function, int dimensions,
+    cache_layer::KDTreeCache::CacheRetrievalStrategy cacheRestrievalStrategy,
+    bool shiftFlag, bool rotateFlag)
     // clang-format off
     : functionName{function}
     , maxFes{dimensions == 10 ? 200'000 : 1'000'000}
@@ -297,13 +298,17 @@ FunctionManager::cheat(const std::vector<double>& x, std::vector<double>& aux)
     return function(x, aux);
 }
 
+int FunctionManager::rebalance = 100;
+
 double FunctionManager::operator()(const std::vector<double>& x,
                                    std::vector<double>& aux)
 {
-    if ((functionCalls - 1) % (maxFes / 200) == 0) {
+    // TODO: Make a test in which for one function called 30 times we change maxFes / x
+    // and check how long does it take to run
+    if ((functionCalls - 1) % (maxFes / rebalance) == 0) {
         cache.recreate();
     }
-    
+
     const auto value = cache.retrievalStrategy(x, epsilon);
     if (value) {
         ++cacheHits;
@@ -324,6 +329,7 @@ double FunctionManager::callFunctionAndUpdateCache(const std::vector<double>& x,
 double FunctionManager::callFunction(const std::vector<double>& x,
                                      std::vector<double>& aux)
 {
+    const auto timer = utils::timer::Timer{"FunctionManager::callFunction"};
     ++functionCalls;
     epsilon -= decayStep;
 
