@@ -298,7 +298,7 @@ FunctionManager::cheat(const std::vector<double>& x, std::vector<double>& aux)
     return function(x, aux);
 }
 
-int FunctionManager::rebalance = 1;
+int FunctionManager::rebalance = 2;
 
 double FunctionManager::operator()(const std::vector<double>& x,
                                    std::vector<double>& aux)

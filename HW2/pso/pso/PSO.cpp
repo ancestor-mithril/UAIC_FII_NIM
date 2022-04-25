@@ -46,16 +46,17 @@ PSO getDefault(std::string_view functionName, int dimensions)
     return PSO{
         functionName,
         dimensions,
-        100,   // populationSize
-        100,   // resetThreshold
-        0.3,   // inertia
-        1,     // cognition
-        3,     // social
-        0.001, // chaosCoef
-        cacheStrategy::Nearest,
-        true, // augment
-        true, // shiftFlag
-        true  // rotateFlag
+        100,                    // populationSize
+        100,                    // resetThreshold
+        0.3,                    // inertia
+        1,                      // cognition
+        3,                      // social
+        0.001,                  // chaosCoef
+        cacheStrategy::Nearest, // cacheRetrievalStrategy
+        topology::Star,         // topology
+        true,                   // augment
+        true,                   // shiftFlag
+        true                    // rotateFlag
     };
 }
 
@@ -69,6 +70,7 @@ PSO::PSO(std::string_view functionName,
         double social,
         double chaosCoef,
         cacheStrategy cacheRetrievalStrategy,
+        topology topology,
         bool augment,
         bool shiftFlag,
         bool rotateFlag)
@@ -83,6 +85,21 @@ PSO::PSO(std::string_view functionName,
     , augment{augment}
 // clang-format on
 {
+    getVisibleBest =
+        [=, this]() -> std::function<double(std::size_t, std::size_t)> {
+        if (topology == topology::StaticRing) {
+            return [this](std::size_t index, std::size_t dimension) {
+                return getStaticRingBest(index, dimension);
+            };
+        }
+        if (topology == topology::Star) {
+            return [this](std::size_t index, std::size_t dimension) {
+                return getStarBest(index, dimension);
+            };
+        }
+        throw std::runtime_error("Not implemented topology");
+    }();
+
     population = std::vector<std::vector<double>>(
         populationSize, std::vector<double>(dimensions));
     aux = std::vector<std::vector<double>>(populationSize,
@@ -99,6 +116,12 @@ PSO::PSO(std::string_view functionName,
 
     indices.resize(populationSize);
     std::iota(indices.begin(), indices.end(), 0);
+    neighbors.resize(populationSize + 2);
+
+    // creating neighbors
+    std::iota(neighbors.begin(), neighbors.end(), -1);
+    neighbors[0] = populationSize - 1;
+    neighbors[neighbors.size() - 1] = 0;
 
     resetPopulation();
 }
@@ -166,8 +189,7 @@ void PSO::runInternal()
             resetPopulation();
         }
 
-        // TODO: do updateVelocity and update best in separate loop
-        // parallelize update velocity
+        mutate();
         updateVelocity();
         evaluate();
         updateBest();
@@ -180,8 +202,27 @@ void PSO::runInternal()
     }
 }
 
+void PSO::mutate()
+{
+    // TODO: generate positions
+    if (not augment) {
+        return;
+    }
+    std::for_each(indices.begin(), indices.end(), [this](auto i) {
+        std::transform(populationVelocity[i].begin(),
+                       populationVelocity[i].end(),
+                       populationVelocity[i].begin(), [this](const auto x) {
+                           if (randomDouble(gen) < chaosCoef) {
+                               return randomFromDomainRange(gen);
+                           }
+                           return x;
+                       });
+    });
+}
+
 void PSO::updateVelocity()
 {
+
     // par_unseq or unseq?
     std::for_each(
         std::execution::par_unseq, indices.begin(), indices.end(),
@@ -195,19 +236,17 @@ void PSO::updateVelocity()
                 // mutation outside when applying the mutation it is not
                 // necessary to iterate through all particles all dimensions, we
                 // can generate the positions that are going to be mutated
-                if (augment and randomDouble(gen) < chaosCoef) {
-                    populationVelocity[i][d] = randomFromDomainRange(gen);
-                } else {
+                {
                     populationVelocity[i][d] =
                         rInertia * populationInertia[i] *
                             populationVelocity[i][d] +
                         cognition * rCognition *
                             (populationPastBests[i][d] - population[i][d]) +
-                        social * rSocial * (globalBest[d] - population[i][d]);
+                        social * rSocial *
+                            (getVisibleBest(i, d) - population[i][d]);
                 }
 
-                // ? do we really need to clip the velocity if we are doing
-                // reflection?
+                // TODO: Use modulo arithmetics
                 if (populationVelocity[i][d] > constants::valuesRange) {
                     populationVelocity[i][d] = constants::valuesRange;
                 } else if (populationVelocity[i][d] < -constants::valuesRange) {
@@ -277,6 +316,29 @@ void PSO::updateInertia()
                                              (1.0 - inertia)) *
                               randomDouble(gen);
                    });
+}
+
+double PSO::getStarBest([[maybe_unused]] std::size_t index,
+                        std::size_t dimension) const
+{
+    return globalBest[dimension];
+}
+
+double PSO::getStaticRingBest(std::size_t index, std::size_t dimension) const
+{
+    
+    const auto leftIndex = neighbors[index];
+    const auto rightIndex = neighbors[index + 2];
+    const auto leftBest = populationPastBestEval[leftIndex];
+    const auto rightBest = populationPastBestEval[rightIndex];
+    const auto currentBest = populationPastBestEval[index];
+
+    if (leftBest < currentBest and leftBest < rightBest) {
+        return populationPastBests[leftIndex][dimension];
+    } else if (rightBest < currentBest and rightBest < leftBest) {
+        return populationPastBests[rightIndex][dimension];
+    }
+    return populationPastBests[index][dimension];
 }
 
 } // namespace pso

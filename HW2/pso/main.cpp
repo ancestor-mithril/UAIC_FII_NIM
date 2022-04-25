@@ -16,7 +16,8 @@ void runDefault();
 void runTest();
 void runExperiment(int dimensions, int resetThreshold, double inertia,
                    double cognition, double social, double chaosCoef,
-                   cacheStrategy cacheRetrievalStrategy, bool augment);
+                   cacheStrategy cacheRetrievalStrategy, pso::topology topology,
+                   bool augment);
 void timeTest();
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
@@ -25,11 +26,10 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     // runDefault();
     // runTest();
 
-    // runExperiment(10, 100, 0.3, 1.0, 3.0, 0.001,
-    // cacheStrategy::FirstNeighbor,
-    //               true);
+    runExperiment(10, 100, 0.3, 1.0, 3.0, 0.001, cacheStrategy::FirstNeighbor,
+                  pso::topology::StaticRing, true);
 
-    timeTest();
+    // timeTest();
     return 0;
 }
 
@@ -79,11 +79,12 @@ void runTest()
 std::pair<double, int>
 runOnce(std::string_view functionName, int dimensions, int resetThreshold,
         double inertia, double cognition, double social, double chaosCoef,
-        cacheStrategy cacheRetrievalStrategy, bool augment)
+        cacheStrategy cacheRetrievalStrategy, pso::topology topology,
+        bool augment)
 {
-    auto pso = pso::PSO(functionName, dimensions, 500, resetThreshold, inertia,
+    auto pso = pso::PSO(functionName, dimensions, 100, resetThreshold, inertia,
                         cognition, social, chaosCoef, cacheRetrievalStrategy,
-                        augment, true, true);
+                        topology, augment, true, true);
     // TODO: Add time measurements and write them to file
     auto value = pso.run();
 
@@ -94,14 +95,16 @@ runOnce(std::string_view functionName, int dimensions, int resetThreshold,
 std::vector<std::pair<double, int>>
 run30Times(std::string_view functionName, int dimensions, int resetThreshold,
            double inertia, double cognition, double social, double chaosCoef,
-           cacheStrategy cacheRetrievalStrategy, bool augment, int runs)
+           cacheStrategy cacheRetrievalStrategy, pso::topology topology,
+           bool augment, int runs)
 {
     auto ret = std::vector<std::pair<double, int>>(runs, {-100.0, 0});
     std::transform(std::execution::par_unseq, ret.begin(), ret.end(),
                    ret.begin(), [=]([[maybe_unused]] const auto& x) {
                        return runOnce(functionName, dimensions, resetThreshold,
                                       inertia, cognition, social, chaosCoef,
-                                      cacheRetrievalStrategy, augment);
+                                      cacheRetrievalStrategy, topology,
+                                      augment);
                    });
     return ret;
 }
@@ -128,7 +131,8 @@ void timeTest()
 
         for (auto& func : functions) {
             run30Times(func, 10, i, 0.3, 1.0, 3.0, 0.001,
-                       cacheStrategy::FirstNeighbor, true, 10);
+                       cacheStrategy::FirstNeighbor, pso::topology::Star, true,
+                       10);
         }
         std::cout << utils::timer::Timer::getStatistics() << std::endl;
         utils::timer::Timer::clean();
@@ -139,7 +143,8 @@ void timeTest()
 
         for (auto& func : functions) {
             run30Times(func, 10, i, 0.3, 1.0, 3.0, 0.001,
-                       cacheStrategy::FirstNeighbor, true, 10);
+                       cacheStrategy::FirstNeighbor, pso::topology::Star, true,
+                       10);
         }
         std::cout << utils::timer::Timer::getStatistics() << std::endl;
         utils::timer::Timer::clean();
@@ -150,7 +155,8 @@ void timeTest()
 
         for (auto& func : functions) {
             run30Times(func, 10, i, 0.3, 1.0, 3.0, 0.001,
-                       cacheStrategy::FirstNeighbor, true, 10);
+                       cacheStrategy::FirstNeighbor, pso::topology::Star, true,
+                       10);
         }
         std::cout << utils::timer::Timer::getStatistics() << std::endl;
         utils::timer::Timer::clean();
@@ -160,12 +166,12 @@ void timeTest()
 double runForFunction(std::string_view f, int dimensions, int resetThreshold,
                       double inertia, double cognition, double social,
                       double chaosCoef, cacheStrategy cacheRetrievalStrategy,
-                      bool augment)
+                      pso::topology topology, bool augment)
 {
     const auto start = std::chrono::high_resolution_clock::now();
     const auto rez =
         run30Times(f, dimensions, resetThreshold, inertia, cognition, social,
-                   chaosCoef, cacheRetrievalStrategy, augment, 30);
+                   chaosCoef, cacheRetrievalStrategy, topology, augment, 30);
     const auto end = std::chrono::high_resolution_clock::now();
     const auto duration =
         std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
@@ -204,7 +210,8 @@ double runForFunction(std::string_view f, int dimensions, int resetThreshold,
 
 void runExperiment(int dimensions, int resetThreshold, double inertia,
                    double cognition, double social, double chaosCoef,
-                   cacheStrategy cacheRetrievalStrategy, bool augment)
+                   cacheStrategy cacheRetrievalStrategy, pso::topology topology,
+                   bool augment)
 {
     const auto functions = std::vector<std::string>{
         "zakharov_func",
@@ -228,7 +235,8 @@ void runExperiment(int dimensions, int resetThreshold, double inertia,
         //     runForFunction, f, dimensions, resetThreshold, inertia,
         //     cognition, social, chaosCoef, cacheRetrievalStrategy, augment});
         runForFunction(f, dimensions, resetThreshold, inertia, cognition,
-                       social, chaosCoef, cacheRetrievalStrategy, augment);
+                       social, chaosCoef, cacheRetrievalStrategy, topology,
+                       augment);
     }
     for (auto& f : futures) {
         f.join();

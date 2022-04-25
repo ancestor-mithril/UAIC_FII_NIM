@@ -14,6 +14,16 @@ namespace pso {
 using cacheStrategy =
     function_layer::cache_layer::KDTreeCache::CacheRetrievalStrategy;
 
+enum class topology
+{
+    StaticRing,
+    MiniBatchRing, // TODO: Implement
+    Star,
+    // Random,
+    // Grid,
+    // Full
+};
+
 class PSO
 {
   public:
@@ -27,6 +37,7 @@ class PSO
         double social,
         double chaosCoef,
         cacheStrategy cacheRetrievalStrategy,
+        topology topology,
         bool augment,
         bool shiftFlag,
         bool rotateFlag);
@@ -41,10 +52,14 @@ class PSO
     void runInternal();
     void resetPopulation();
     void updateVelocity();
+    void mutate();
     void evaluate();
     void updateBest();
     void updateInertia();
     bool stop() const;
+
+    double getStaticRingBest(std::size_t index, std::size_t dimension) const;
+    double getStarBest(std::size_t index, std::size_t dimension) const;
 
     // TODO: use seed from file
     std::random_device seed;
@@ -56,6 +71,7 @@ class PSO
         -utils::constants::valuesRange, utils::constants::valuesRange};
 
     function_layer::FunctionManager functionManager;
+    std::function<double(std::size_t, std::size_t)> getVisibleBest;
 
     const int dimensions;
     const int resetThreshold;
@@ -77,6 +93,7 @@ class PSO
     std::vector<double> populationPastBestEval;
     std::vector<double> globalBest;
     std::vector<std::size_t> indices;
+    std::vector<std::size_t> neighbors;
     double globalBestEval = std::numeric_limits<double>::infinity();
 
     const bool augment;
