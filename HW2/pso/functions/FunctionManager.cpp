@@ -298,13 +298,13 @@ FunctionManager::cheat(const std::vector<double>& x, std::vector<double>& aux)
     return function(x, aux);
 }
 
-int FunctionManager::rebalance = 100;
+int FunctionManager::rebalance = 4;
 
 double FunctionManager::operator()(const std::vector<double>& x,
                                    std::vector<double>& aux)
 {
     // TODO: Choose best rebalance
-    if ((functionCalls - 1) % (maxFes / rebalance) == 0) {
+    if ((functionCalls + 2) % (maxFes / rebalance) == 0) {
         cache.recreate();
     }
 

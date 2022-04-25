@@ -144,6 +144,7 @@ double PSO::run()
     try {
         runInternal();
     } catch (const std::out_of_range& err) {
+        // std::cout << "Error: " << err.what() << std::endl;
         // max function calls reached
     }
     // std::cout << "Epochs done: " << currentEpoch << std::endl;
@@ -232,9 +233,9 @@ void PSO::updateVelocity()
 
 void PSO::evaluate()
 {
-    // par_unseq or unseq?
-    std::transform(std::execution::par_unseq, population.begin(),
-                   population.end(), aux.begin(), evaluations.begin(),
+    // cannot be parallelized because exception triggers std::terminate
+    std::transform(population.begin(), population.end(), aux.begin(),
+                   evaluations.begin(),
                    [this](const auto& particle, auto& aux) {
                        return functionManager(particle, aux);
                    });
@@ -264,12 +265,13 @@ void PSO::updateBest()
 
 void PSO::updateInertia()
 {
-    std::transform(
-        std::execution::unseq, evaluations.begin(), evaluations.end(),
-        populationInertia.begin(), [this](const auto evaluation) {
-            return (inertia + (1.0 - (globalBestEval / evaluation)) * 0.7);
-            //    return 0.2;
-        });
+    std::transform(std::execution::unseq, evaluations.begin(),
+                   evaluations.end(), populationInertia.begin(),
+                   [this](const auto evaluation) {
+                       return (inertia + (1.0 - (globalBestEval / evaluation)) *
+                                             (1.0 - inertia)) *
+                              randomDouble(gen);
+                   });
 }
 
 } // namespace pso

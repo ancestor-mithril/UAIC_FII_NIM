@@ -25,8 +25,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     // runDefault();
     // runTest();
 
-    runExperiment(10, 200'000, 0.3, 1.0, 3.0, 0.01,
-                  cacheStrategy::FirstNeighbor, true);
+    runExperiment(10, 100, 0.3, 1.0, 3.0, 0.001, cacheStrategy::FirstNeighbor,
+                  true);
 
     // timeTest();
     return 0;
@@ -93,9 +93,9 @@ runOnce(std::string_view functionName, int dimensions, int resetThreshold,
 std::vector<std::pair<double, int>>
 run30Times(std::string_view functionName, int dimensions, int resetThreshold,
            double inertia, double cognition, double social, double chaosCoef,
-           cacheStrategy cacheRetrievalStrategy, bool augment)
+           cacheStrategy cacheRetrievalStrategy, bool augment, int runs)
 {
-    auto ret = std::vector<std::pair<double, int>>(30, {-100.0, 0});
+    auto ret = std::vector<std::pair<double, int>>(runs, {-100.0, 0});
     std::transform(std::execution::par_unseq, ret.begin(), ret.end(),
                    ret.begin(), [=]([[maybe_unused]] const auto& x) {
                        return runOnce(functionName, dimensions, resetThreshold,
@@ -107,11 +107,50 @@ run30Times(std::string_view functionName, int dimensions, int resetThreshold,
 
 void timeTest()
 {
-    for (auto i = 1; i < 500; ++i) {
+    const auto functions = std::vector<std::string>{
+        "zakharov_func",
+        "rosenbrock_func",
+        "schaffer_F7_func",
+        "rastrigin_func", // blocked
+        "levy_func",      // blocked
+        "hf01",           // semi-blocked
+        "hf02",           // blocked
+        "hf03",           // blocked
+        "cf01",           // blocked
+        "cf02",           // blocked
+        "cf03",           // blocked
+        "cf04"            // blocked
+    };
+    for (auto i = 1; i < 10; ++i) {
         std::cout << i << std::endl;
         function_layer::FunctionManager::rebalance = i;
-        run30Times("rastrigin_func", 10, 200'000, 0.3, 1.0, 3.0, 0.01,
-                   cacheStrategy::FirstNeighbor, true);
+
+        for (auto& func : functions) {
+            run30Times(func, 10, i, 0.3, 1.0, 3.0, 0.001,
+                       cacheStrategy::FirstNeighbor, true, 10);
+        }
+        std::cout << utils::timer::Timer::getStatistics() << std::endl;
+        utils::timer::Timer::clean();
+    }
+    for (auto i = 11; i < 50; i += 5) {
+        std::cout << i << std::endl;
+        function_layer::FunctionManager::rebalance = i;
+
+        for (auto& func : functions) {
+            run30Times(func, 10, i, 0.3, 1.0, 3.0, 0.001,
+                       cacheStrategy::FirstNeighbor, true, 10);
+        }
+        std::cout << utils::timer::Timer::getStatistics() << std::endl;
+        utils::timer::Timer::clean();
+    }
+    for (auto i = 51; i < 100; i += 10) {
+        std::cout << i << std::endl;
+        function_layer::FunctionManager::rebalance = i;
+
+        for (auto& func : functions) {
+            run30Times(func, 10, i, 0.3, 1.0, 3.0, 0.001,
+                       cacheStrategy::FirstNeighbor, true, 10);
+        }
         std::cout << utils::timer::Timer::getStatistics() << std::endl;
         utils::timer::Timer::clean();
     }
@@ -123,8 +162,9 @@ double runForFunction(std::string_view f, int dimensions, int resetThreshold,
                       bool augment)
 {
     const auto start = std::chrono::high_resolution_clock::now();
-    auto rez = run30Times(f, dimensions, resetThreshold, inertia, cognition,
-                          social, chaosCoef, cacheRetrievalStrategy, augment);
+    const auto rez =
+        run30Times(f, dimensions, resetThreshold, inertia, cognition, social,
+                   chaosCoef, cacheRetrievalStrategy, augment, 30);
     const auto end = std::chrono::high_resolution_clock::now();
     const auto duration =
         std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
@@ -141,13 +181,13 @@ double runForFunction(std::string_view f, int dimensions, int resetThreshold,
     std::cout << utils::timer::Timer::getStatistics() << std::endl;
     utils::timer::Timer::clean();
 
-    auto fileName = "experiments/" + std::string{f} + '_' +
-                    std::to_string(dimensions) + '_' + std::to_string(inertia) +
-                    '_' + std::to_string(resetThreshold) + '_' +
-                    std::to_string(cognition) + '_' + std::to_string(social) +
-                    '_' + std::to_string(chaosCoef) + '_' +
-                    std::to_string((int)cacheRetrievalStrategy) + '_' +
-                    std::to_string(augment) + "2";
+    const auto fileName =
+        "experiments/" + std::string{f} + '_' + std::to_string(dimensions) +
+        '_' + std::to_string(inertia) + '_' + std::to_string(resetThreshold) +
+        '_' + std::to_string(cognition) + '_' + std::to_string(social) + '_' +
+        std::to_string(chaosCoef) + '_' +
+        std::to_string((int)cacheRetrievalStrategy) + '_' +
+        std::to_string(augment) + "2";
     std::ofstream file{fileName};
     for (auto [x, _] : rez) {
         file << x << ' ';
@@ -165,7 +205,7 @@ void runExperiment(int dimensions, int resetThreshold, double inertia,
                    double cognition, double social, double chaosCoef,
                    cacheStrategy cacheRetrievalStrategy, bool augment)
 {
-    auto functions = std::vector<std::string>{
+    const auto functions = std::vector<std::string>{
         "zakharov_func",
         "rosenbrock_func",
         "schaffer_F7_func",

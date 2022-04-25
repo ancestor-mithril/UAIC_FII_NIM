@@ -478,6 +478,7 @@ double rosenbrock_func(const std::vector<double>& x, std::vector<double>& aux,
 
 double do_rastrigin_func(const VectorRange& x)
 {
+    // accumulate vs reduce
     return std::accumulate(x.begin, x.end, std::distance(x.begin, x.end) * 10.0,
                            [=](auto f, auto elem) {
                                return f + elem * elem -
