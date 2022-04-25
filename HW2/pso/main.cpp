@@ -25,10 +25,11 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     // runDefault();
     // runTest();
 
-    runExperiment(10, 100, 0.3, 1.0, 3.0, 0.001, cacheStrategy::FirstNeighbor,
-                  true);
+    // runExperiment(10, 100, 0.3, 1.0, 3.0, 0.001,
+    // cacheStrategy::FirstNeighbor,
+    //               true);
 
-    // timeTest();
+    timeTest();
     return 0;
 }
 

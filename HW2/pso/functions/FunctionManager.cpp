@@ -298,14 +298,14 @@ FunctionManager::cheat(const std::vector<double>& x, std::vector<double>& aux)
     return function(x, aux);
 }
 
-int FunctionManager::rebalance = 8;
+int FunctionManager::rebalance = 1;
 
 double FunctionManager::operator()(const std::vector<double>& x,
                                    std::vector<double>& aux)
 {
     epsilon *= decayFactor;
     // TODO: Choose best rebalance
-    if ((functionCalls + 2) % (maxFes / rebalance) == 0) {
+    if ((functionCalls - 2) % (maxFes / rebalance) == 0) {
         cache.recreate();
     }
 

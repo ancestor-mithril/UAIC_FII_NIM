@@ -19,6 +19,8 @@ format:
 	clang-format -i ./pso/utils/Utils.h
 	clang-format -i ./pso/utils/Utils.cpp
 	clang-format -i ./pso/utils/Constants.h
+	clang-format -i ./pso/utils/Timer.h
+	clang-format -i ./pso/utils/Timer.cpp
 	clang-format -i ./pso/pso/PSO.h
 	clang-format -i ./pso/pso/PSO.cpp
 	clang-format -i ./pso/main.cpp

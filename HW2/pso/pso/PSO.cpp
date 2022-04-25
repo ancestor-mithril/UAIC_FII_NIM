@@ -191,6 +191,10 @@ void PSO::updateVelocity()
             const auto rInertia = randomDouble(gen);
 
             for (auto d = 0; d < dimensions; ++d) {
+                // TODO: this can be faster if we only do the else and apply the
+                // mutation outside when applying the mutation it is not
+                // necessary to iterate through all particles all dimensions, we
+                // can generate the positions that are going to be mutated
                 if (augment and randomDouble(gen) < chaosCoef) {
                     populationVelocity[i][d] = randomFromDomainRange(gen);
                 } else {
@@ -202,13 +206,13 @@ void PSO::updateVelocity()
                         social * rSocial * (globalBest[d] - population[i][d]);
                 }
 
+                // ? do we really need to clip the velocity if we are doing
+                // reflection?
                 if (populationVelocity[i][d] > constants::valuesRange) {
                     populationVelocity[i][d] = constants::valuesRange;
                 } else if (populationVelocity[i][d] < -constants::valuesRange) {
                     populationVelocity[i][d] = -constants::valuesRange;
                 }
-
-                population[i][d] += populationVelocity[i][d];
 
                 // TODO: Add strategy (clipping to domain or reflection)
 
@@ -216,6 +220,7 @@ void PSO::updateVelocity()
                 // How would this work: use an usigned to represent [minimum,
                 // maximum] and do operations for unsigneds then convert to
                 // double
+                population[i][d] += populationVelocity[i][d];
                 while (population[i][d] < constants::minimum or
                        population[i][d] > constants::maximum) {
                     if (population[i][d] < constants::minimum) {
