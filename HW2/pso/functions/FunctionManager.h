@@ -54,7 +54,6 @@ class FunctionManager
     const std::string functionName;
     const int maxFes = 200'000;
     double epsilon = 0.1;
-    const double decayStep = 0.0;
     double minimum = std::numeric_limits<double>::infinity();
     int functionCalls = 0;
     int cacheHits = 0;

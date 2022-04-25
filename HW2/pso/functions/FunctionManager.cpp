@@ -270,6 +270,7 @@ initFunction(const std::string& functionName, int dimensions, bool shiftFlag,
 
 constexpr auto maxExpsilon = 0.01;
 constexpr auto minExpsilon = 1e-15;
+constexpr auto decayFactor = 0.9;
 
 } // namespace
 
@@ -281,7 +282,6 @@ FunctionManager::FunctionManager(
     : functionName{function}
     , maxFes{dimensions == 10 ? 200'000 : 1'000'000}
     , epsilon{maxExpsilon}
-    , decayStep{(maxExpsilon - minExpsilon) / maxFes}
     , function{initFunction(functionName, dimensions, shiftFlag, rotateFlag)}
     , cache{maxFes, cacheRestrievalStrategy}
 // clang-format on
@@ -298,11 +298,12 @@ FunctionManager::cheat(const std::vector<double>& x, std::vector<double>& aux)
     return function(x, aux);
 }
 
-int FunctionManager::rebalance = 4;
+int FunctionManager::rebalance = 8;
 
 double FunctionManager::operator()(const std::vector<double>& x,
                                    std::vector<double>& aux)
 {
+    epsilon *= decayFactor;
     // TODO: Choose best rebalance
     if ((functionCalls + 2) % (maxFes / rebalance) == 0) {
         cache.recreate();
@@ -331,7 +332,6 @@ double FunctionManager::callFunction(const std::vector<double>& x,
 {
     const auto timer = utils::timer::Timer{"FunctionManager::callFunction"};
     ++functionCalls;
-    epsilon -= decayStep;
 
     if (functionCalls > maxFes) {
         throw std::out_of_range{"Function call out of range"};
