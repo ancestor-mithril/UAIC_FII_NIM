@@ -15,9 +15,9 @@ using cacheStrategy =
 void runDefault();
 void runTest();
 void runExperiment(int dimensions, int resetThreshold, double inertia,
-                   double cognition, double social, double chaosCoef,
-                   cacheStrategy cacheRetrievalStrategy, pso::topology topology,
-                   bool augment);
+                   double cognition, double social, double swarmAttraction,
+                   double chaosCoef, cacheStrategy cacheRetrievalStrategy,
+                   swarm::topology topology, bool augment);
 void timeTest();
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
@@ -26,8 +26,8 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     // runDefault();
     // runTest();
 
-    runExperiment(10, 100, 0.3, 1.0, 3.0, 0.001, cacheStrategy::FirstNeighbor,
-                  pso::topology::StaticRing, true);
+    runExperiment(10, 100, 0.3, 1.0, 3.0, 0.1, 0.001, cacheStrategy::FirstNeighbor,
+                  swarm::topology::StaticRing, true);
 
     // timeTest();
     return 0;
@@ -78,13 +78,43 @@ void runTest()
 
 std::pair<double, int>
 runOnce(std::string_view functionName, int dimensions, int resetThreshold,
-        double inertia, double cognition, double social, double chaosCoef,
-        cacheStrategy cacheRetrievalStrategy, pso::topology topology,
-        bool augment)
+        double inertia, double cognition, double social, double swarmAttraction,
+        double chaosCoef, cacheStrategy cacheRetrievalStrategy,
+        swarm::topology topology, bool augment)
 {
-    auto pso = pso::PSO(functionName, dimensions, 100, resetThreshold, inertia,
-                        cognition, social, chaosCoef, cacheRetrievalStrategy,
-                        topology, augment, true, true);
+    auto pso = pso::PSO(
+        {
+            swarm::Swarm(
+                    dimensions, 
+                    200, 
+                    resetThreshold, 
+                    0.3, 
+                    1.0, 
+                    3.0, 
+                    0.1,
+                    0, 
+                    swarm::topology::StaticRing, 
+                    augment
+                ),
+            swarm::Swarm(
+                    dimensions, 
+                    300, 
+                    resetThreshold, 
+                    0.5, 
+                    1.0, 
+                    3.0, 
+                    0.001,
+                    0.1, 
+                    swarm::topology::Star, 
+                    augment
+                )
+        },
+        functionName, 
+        dimensions, 
+        cacheRetrievalStrategy,
+        true, 
+        true
+    );
     // TODO: Add time measurements and write them to file
     auto value = pso.run();
 
@@ -94,17 +124,17 @@ runOnce(std::string_view functionName, int dimensions, int resetThreshold,
 
 std::vector<std::pair<double, int>>
 run30Times(std::string_view functionName, int dimensions, int resetThreshold,
-           double inertia, double cognition, double social, double chaosCoef,
-           cacheStrategy cacheRetrievalStrategy, pso::topology topology,
-           bool augment, int runs)
+           double inertia, double cognition, double social, double swarmAttraction,
+           double chaosCoef, cacheStrategy cacheRetrievalStrategy,
+           swarm::topology topology, bool augment, int runs)
 {
     auto ret = std::vector<std::pair<double, int>>(runs, {-100.0, 0});
     std::transform(std::execution::par_unseq, ret.begin(), ret.end(),
                    ret.begin(), [=]([[maybe_unused]] const auto& x) {
                        return runOnce(functionName, dimensions, resetThreshold,
-                                      inertia, cognition, social, chaosCoef,
-                                      cacheRetrievalStrategy, topology,
-                                      augment);
+                                      inertia, cognition, social, swarmAttraction,
+                                      chaosCoef, cacheRetrievalStrategy, 
+                                      topology, augment);
                    });
     return ret;
 }
@@ -130,8 +160,8 @@ void timeTest()
         function_layer::FunctionManager::rebalance = i;
 
         for (auto& func : functions) {
-            run30Times(func, 10, i, 0.3, 1.0, 3.0, 0.001,
-                       cacheStrategy::FirstNeighbor, pso::topology::Star, true,
+            run30Times(func, 10, i, 0.3, 1.0, 3.0, 0.1, 0.001,
+                       cacheStrategy::FirstNeighbor, swarm::topology::Star, true,
                        10);
         }
         std::cout << utils::timer::Timer::getStatistics() << std::endl;
@@ -142,8 +172,8 @@ void timeTest()
         function_layer::FunctionManager::rebalance = i;
 
         for (auto& func : functions) {
-            run30Times(func, 10, i, 0.3, 1.0, 3.0, 0.001,
-                       cacheStrategy::FirstNeighbor, pso::topology::Star, true,
+            run30Times(func, 10, i, 0.3, 1.0, 3.0, 0.1, 0.001,
+                       cacheStrategy::FirstNeighbor, swarm::topology::Star, true,
                        10);
         }
         std::cout << utils::timer::Timer::getStatistics() << std::endl;
@@ -154,8 +184,8 @@ void timeTest()
         function_layer::FunctionManager::rebalance = i;
 
         for (auto& func : functions) {
-            run30Times(func, 10, i, 0.3, 1.0, 3.0, 0.001,
-                       cacheStrategy::FirstNeighbor, pso::topology::Star, true,
+            run30Times(func, 10, i, 0.3, 1.0, 3.0, 0.1, 0.001,
+                       cacheStrategy::FirstNeighbor, swarm::topology::Star, true,
                        10);
         }
         std::cout << utils::timer::Timer::getStatistics() << std::endl;
@@ -165,13 +195,13 @@ void timeTest()
 
 double runForFunction(std::string_view f, int dimensions, int resetThreshold,
                       double inertia, double cognition, double social,
-                      double chaosCoef, cacheStrategy cacheRetrievalStrategy,
-                      pso::topology topology, bool augment)
+                      double swarmAttraction, double chaosCoef, 
+                      cacheStrategy cacheRetrievalStrategy, swarm::topology topology, bool augment)
 {
     const auto start = std::chrono::high_resolution_clock::now();
     const auto rez =
         run30Times(f, dimensions, resetThreshold, inertia, cognition, social,
-                   chaosCoef, cacheRetrievalStrategy, topology, augment, 30);
+                   swarmAttraction, chaosCoef, cacheRetrievalStrategy, topology, augment, 30);
     const auto end = std::chrono::high_resolution_clock::now();
     const auto duration =
         std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
@@ -192,7 +222,7 @@ double runForFunction(std::string_view f, int dimensions, int resetThreshold,
         "experiments/" + std::string{f} + '_' + std::to_string(dimensions) +
         '_' + std::to_string(inertia) + '_' + std::to_string(resetThreshold) +
         '_' + std::to_string(cognition) + '_' + std::to_string(social) + '_' +
-        std::to_string(chaosCoef) + '_' +
+        std::to_string(swarmAttraction) + '_' + std::to_string(chaosCoef) + '_' +
         std::to_string((int)cacheRetrievalStrategy) + '_' +
         std::to_string(augment) + "2";
     std::ofstream file{fileName};
@@ -209,9 +239,9 @@ double runForFunction(std::string_view f, int dimensions, int resetThreshold,
 }
 
 void runExperiment(int dimensions, int resetThreshold, double inertia,
-                   double cognition, double social, double chaosCoef,
-                   cacheStrategy cacheRetrievalStrategy, pso::topology topology,
-                   bool augment)
+                   double cognition, double social, double swarmAttraction,
+                   double chaosCoef, cacheStrategy cacheRetrievalStrategy,
+                   swarm::topology topology, bool augment)
 {
     const auto functions = std::vector<std::string>{
         "zakharov_func",
@@ -235,7 +265,7 @@ void runExperiment(int dimensions, int resetThreshold, double inertia,
         //     runForFunction, f, dimensions, resetThreshold, inertia,
         //     cognition, social, chaosCoef, cacheRetrievalStrategy, augment});
         runForFunction(f, dimensions, resetThreshold, inertia, cognition,
-                       social, chaosCoef, cacheRetrievalStrategy, topology,
+                       social, swarmAttraction, chaosCoef, cacheRetrievalStrategy, topology,
                        augment);
     }
     for (auto& f : futures) {

@@ -15,6 +15,8 @@ namespace function_layer {
 class FunctionManager
 {
   public:
+    FunctionManager();
+
     FunctionManager(std::string_view functionName, int dimensions,
                     cache_layer::KDTreeCache::CacheRetrievalStrategy
                         cacheRestrievalStrategy,

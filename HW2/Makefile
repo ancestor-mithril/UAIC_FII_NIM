@@ -2,7 +2,7 @@ BUILDDIR=build
 APP=app
 RELEASE=-O3 -DNDEBUG
 CMAKE_CXX_FLAGS=-std=c++20 -Wall -Wextra -Wpedantic -pthread
-GCC=g++
+GCC=g++-11
 
 builddir:
 	if [[ -d "${BUILDDIR}" ]]; then echo "Directory ${BUILDDIR} already exists"; else echo "Creating ${BUILDDIR}"; mkdir ${BUILDDIR}; fi;
@@ -35,11 +35,12 @@ release: clean builddir
 	&& ${GCC} ${RELEASE} ${CMAKE_CXX_FLAGS} -c ../pso/cec22/Cec22.cpp \
 	&& ${GCC} ${RELEASE} ${CMAKE_CXX_FLAGS} -c ../pso/functions/FunctionManager.cpp \
 	&& ${GCC} ${RELEASE} ${CMAKE_CXX_FLAGS} -c ../KDTree/KDTree.cpp \
+	&& ${GCC} ${RELEASE} ${CMAKE_CXX_FLAGS} -c ../pso/swarm/Swarm.cpp \
 	&& ${GCC} ${RELEASE} ${CMAKE_CXX_FLAGS} -c ../pso/pso/PSO.cpp \
 	&& ${GCC} ${RELEASE} ${CMAKE_CXX_FLAGS} -c ../pso/utils/Utils.cpp \
 	&& ${GCC} ${RELEASE} ${CMAKE_CXX_FLAGS} -c ../pso/utils/Timer.cpp \
 	&& ${GCC} ${RELEASE} ${CMAKE_CXX_FLAGS} -c ../pso/main.cpp \
-	&& ${GCC} ${RELEASE} ${CMAKE_CXX_FLAGS} Timer.o Cec22.o FunctionManager.o PSO.o main.o KDTree.o Utils.o -o ${APP}.exe
+	&& ${GCC} ${RELEASE} ${CMAKE_CXX_FLAGS} Timer.o Cec22.o FunctionManager.o Swarm.o PSO.o main.o KDTree.o Utils.o -o ${APP}.exe
 
 run: release
 	./${BUILDDIR}/${APP}.exe
