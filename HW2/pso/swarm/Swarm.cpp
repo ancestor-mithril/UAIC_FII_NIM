@@ -222,8 +222,9 @@ void Swarm::updateVelocity(const std::vector<double>& swarmsBest)
                     cognition * rCognition *
                         (populationPastBests[i][d] - population[i][d]) +
                     social * rSocial *
-                        (getVisibleBest(i, d) - population[i][d]) +
-                    swarmAttraction * rSwarm * (swarmsBest[d] - population[i][d]);
+                        (getVisibleBest(i, d) - population[i][d])
+                    + swarmAttraction * rSwarm * (swarmsBest[d] - population[i][d])
+                    ;
 
                 // TODO: Use modulo arithmetics
                 if (populationVelocity[i][d] > constants::valuesRange) {

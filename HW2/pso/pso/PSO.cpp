@@ -29,20 +29,8 @@ std::string vecToString(const std::vector<double>& v)
 PSO getDefault(std::string_view functionName, int dimensions)
 {
     return PSO{
-        {
-            swarm::Swarm(
-                    dimensions, 
-                    500, 
-                    150, 
-                    0.3, 
-                    1.0, 
-                    3.0,
-                    0.1, 
-                    0.001, 
-                    swarm::topology::Star, 
-                    true
-                )
-        },
+        {swarm::Swarm(dimensions, 500, 150, 0.3, 1.0, 3.0, 0.1, 0.001,
+                      swarm::topology::Star, true)},
         functionName,
         dimensions,
         cacheStrategy::Nearest, // cacheRetrievalStrategy
@@ -73,9 +61,9 @@ PSO::PSO(
     , dimensions{dimensions}
 // clang-format on
 {
-    //Add the functionManager to each swarm. Refactor this in the future
+    // Add the functionManager to each swarm. Refactor this in the future
 
-    for(auto& swarm : populations) {
+    for (auto& swarm : populations) {
         swarm.initialize(functionManager);
     }
 
@@ -115,7 +103,7 @@ void PSO::runInternal()
 {
     // TODO: use a better stopping criterion
     while (not stop()) {
-        for(auto& swarm : populations) {
+        for (auto& swarm : populations) {
             swarm.updatePopulation(globalBest);
         }
 
@@ -126,10 +114,10 @@ void PSO::runInternal()
 
 void PSO::retrieveBestAmongSwarms()
 {
-    for(auto& swarm : populations) {
+    for (auto& swarm : populations) {
         double swarmEvaluation = swarm.getBestEvaluation();
 
-        if(swarmEvaluation < globalBestEval) {
+        if (swarmEvaluation < globalBestEval) {
             globalBestEval = swarmEvaluation;
             globalBest = swarm.getBestParticle();
         }

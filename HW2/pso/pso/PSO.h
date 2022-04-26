@@ -1,8 +1,8 @@
 #pragma once
 
 #include "../functions/FunctionManager.h"
-#include "../utils/Constants.h"
 #include "../swarm/Swarm.h"
+#include "../utils/Constants.h"
 
 #include <limits>
 #include <random>

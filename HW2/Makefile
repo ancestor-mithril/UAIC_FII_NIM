@@ -2,7 +2,7 @@ BUILDDIR=build
 APP=app
 RELEASE=-O3 -DNDEBUG
 CMAKE_CXX_FLAGS=-std=c++20 -Wall -Wextra -Wpedantic -pthread
-GCC=g++-11
+GCC=g++
 
 builddir:
 	if [[ -d "${BUILDDIR}" ]]; then echo "Directory ${BUILDDIR} already exists"; else echo "Creating ${BUILDDIR}"; mkdir ${BUILDDIR}; fi;
@@ -30,7 +30,7 @@ format:
 	clang-format -i ./KDTree/tests/error_test.cpp
 	clang-format -i ./KDTree/tests/toy_test.cpp
 
-release: clean builddir
+release: builddir
 	cd ${BUILDDIR} \
 	&& ${GCC} ${RELEASE} ${CMAKE_CXX_FLAGS} -c ../pso/cec22/Cec22.cpp \
 	&& ${GCC} ${RELEASE} ${CMAKE_CXX_FLAGS} -c ../pso/functions/FunctionManager.cpp \
@@ -45,5 +45,14 @@ release: clean builddir
 run: release
 	./${BUILDDIR}/${APP}.exe
 
+experiments: release
+	./${BUILDDIR}/${APP}.exe 10 1 100 50 0.3 1.0 3.0 0.0 0.01 Star > 1.txt \
+	& ./${BUILDDIR}/${APP}.exe 10 1 100 50 0.3 1.0 3.0 0.0 0.01 Ring > 2.txt \
+	# & ./${BUILDDIR}/${APP}.exe 10 1 100 50 0.3 1.0 3.0 0.0 0.01 Ring \
+	# & ./${BUILDDIR}/${APP}.exe 10 1 100 50 0.3 1.0 3.0 0.0 0.01 Ring \
+	# & ./${BUILDDIR}/${APP}.exe 10 1 100 50 0.3 1.0 3.0 0.0 0.01 Ring \
+
 gdb: release # TODO: use debug
 	gdb ./${BUILDDIR}/${APP}.exe
+
+
