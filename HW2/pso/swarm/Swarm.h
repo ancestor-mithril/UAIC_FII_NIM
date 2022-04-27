@@ -9,7 +9,7 @@
 #include <string_view>
 #include <vector>
 
-namespace swarm {
+namespace pso::swarm {
 
 enum class topology
 {
@@ -21,29 +21,31 @@ enum class topology
     // Full
 };
 
+struct SwarmParameters {
+    int populationSize = 100;
+    int resetThreshold = 100;
+    double inertia = 0.3;
+    double cognition = 1.0;
+    double social = 3.0;
+    double swarmAttraction = 0.0;
+    double chaosCoef = 0.0;
+    topology topology = topology::Star;
+    bool selection = false;
+    bool jitter = false;
+};
+
 class Swarm
 {
   public:
     // clang-format off
     
-    Swarm(
-        int dimensions,
-        int populationSize,
-        int resetThreshold,
-        double inertia,
-        double cognition,
-        double social,
-        double swarmAttraction,
-        double chaosCoef,
-        topology topology,
-        bool augment);
+    Swarm(int dimensions, const SwarmParameters& parameters, std::random_device& seed, function_layer::FunctionManager& function);
     // clang-format on
 
     void updatePopulation(const std::vector<double>& swarmsBest);
-    double getBestEvaluation();
-    const std::vector<double>& getBestParticle();
+    double getBestEvaluation() const;
+    std::vector<double> getBestParticle() const;
     std::string getBestVector() const;
-    void initialize(std::shared_ptr<function_layer::FunctionManager> sharedFunctionManager);
 
   private:
     void checkForPopulationReset();
@@ -67,7 +69,9 @@ class Swarm
     std::uniform_real_distribution<double> randomFromDomainRange{
         -utils::constants::valuesRange, utils::constants::valuesRange};
 
-    std::shared_ptr<function_layer::FunctionManager> functionManager;
+    function_layer::FunctionManager& function;
+    std::function<double()> getJitter;
+
     double getVisibleBest(int index, int dimensions);
 
     const int dimensions;
@@ -76,6 +80,7 @@ class Swarm
     int currentEpoch = 0;
     int lastImprovement = 0;
 
+    // const ??
     double inertia;
     double cognition;
     double social;
@@ -98,9 +103,7 @@ class Swarm
     std::vector<std::size_t> neighbors;
     double globalBestEval = std::numeric_limits<double>::infinity();
 
-    const bool augment;
+    const bool selection;
 };
 
-Swarm getDefault(int dimensions);
-
-} // namespace swarm
+} // namespace pso::swarm

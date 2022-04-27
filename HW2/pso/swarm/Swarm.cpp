@@ -6,7 +6,7 @@
 
 namespace constants = utils::constants;
 
-namespace swarm {
+namespace pso::swarm {
 
 namespace {
 
@@ -39,56 +39,41 @@ std::string vecToString(const std::vector<double>& v)
            "]"s;
 }
 
-} // namespace
+constexpr auto epsilon = 1e-6;
 
-Swarm getDefault(int dimensions)
-{
-    return Swarm{
-        dimensions,
-        100,                    // populationSize
-        100,                    // resetThreshold
-        0.3,                    // inertia
-        1,                      // cognition
-        3.0,                    // social
-        0.1,                    // swarmAttraction
-        0.001,                  // chaosCoef
-        topology::Star,         // topology
-        true                    // augment
-    };
-}
+} // namespace
 
 // clang-format off
 Swarm::Swarm(
         int dimensions,
-        int populationSize,
-        int resetThreshold,
-        double inertia,
-        double cognition,
-        double social,
-        double chaosCoef,
-        double swarmAttraction,
-        topology topology,
-        bool augment)
-    : dimensions{dimensions}
-    , resetThreshold{resetThreshold}
-    , populationSize{populationSize}
-    , inertia{inertia}
-    , cognition{cognition}
-    , social{social}
-    , swarmAttraction{swarmAttraction}
-    , chaosCoef{chaosCoef}
-    , swarmTopology{topology}
-    , augment{augment}
+        const SwarmParameters& parameters,
+        std::random_device& seed, 
+        function_layer::FunctionManager& function)
+    : gen{std::mt19937_64(seed())}
+    , function{function}
+    , dimensions{dimensions}
+    , resetThreshold{parameters.resetThreshold}
+    , populationSize{parameters.populationSize}
+    , inertia{parameters.inertia}
+    , cognition{parameters.cognition}
+    , social{parameters.social}
+    , swarmAttraction{parameters.swarmAttraction}
+    , chaosCoef{parameters.chaosCoef}
+    , swarmTopology{parameters.topology}
+    , selection{parameters.selection}
 // clang-format on
 {
-    //Seed here because seed is stupid
-    std::random_device seed;
-    gen = std::mt19937_64(seed());
+    getJitter = [&]() -> std::function<double()> {
+        if (parameters.jitter) {
+            return [&]() { return randomFromDomain(gen) * 0.0001; };
+        }
+        return []() { return 0.0; };
+    }();
 
     population = std::vector<std::vector<double>>(
         populationSize, std::vector<double>(dimensions));
 
-    //Maybe only one aux for every swarm is enough
+    // Maybe only one aux for every swarm is enough
     aux = std::vector<std::vector<double>>(populationSize,
                                            std::vector<double>(dimensions));
     populationVelocity = std::vector<std::vector<double>>(
@@ -105,6 +90,8 @@ Swarm::Swarm(
 
     indices.resize(populationSize);
     std::iota(indices.begin(), indices.end(), 0);
+    // indices are used in here
+    resetPopulation();
 
     neighbors.resize(populationSize + 2);
 
@@ -116,6 +103,7 @@ Swarm::Swarm(
 
 double Swarm::getVisibleBest(int index, int dimensions)
 {
+    // TODO : use strategy
     if (swarmTopology == topology::StaticRing) {
         return getStaticRingBest(index, dimensions);
     }
@@ -125,18 +113,12 @@ double Swarm::getVisibleBest(int index, int dimensions)
     throw std::runtime_error("Not implemented topology");
 }
 
-void Swarm::initialize(std::shared_ptr<function_layer::FunctionManager> sharedFunctionManager)
-{
-    functionManager = sharedFunctionManager;
-    resetPopulation();
-}
-
 void Swarm::resetPopulation()
 {
-    std::for_each(indices.begin(), indices.end(), [this](const auto i) {
+    std::for_each(indices.begin(), indices.end(), [&](const auto i) {
         randomizeVector(population[i], randomFromDomain, gen);
         randomizeVector(populationVelocity[i], randomFromDomainRange, gen);
-        const auto particleValue = functionManager->operator()(population[i], aux[i]);
+        const auto particleValue = function(population[i], aux[i]);
         evaluations[i] = particleValue;
 
         if (particleValue < populationPastBestEval[i]) {
@@ -172,69 +154,72 @@ void Swarm::updatePopulation(const std::vector<double>& swarmsBest)
 
 void Swarm::selectNewPopulation()
 {
-    //Calculate selection probability
-    auto [minIt, maxIt] = std::minmax_element(evaluations.begin(), evaluations.end());
-    auto min = *minIt;
-    auto max = *maxIt;
+    if (not selection) {
+        return;
+    }
+    // Calculate selection probability
+    const auto [minIt, maxIt] =
+        std::minmax_element(evaluations.begin(), evaluations.end());
+    const auto min = *minIt;
+    const auto max = *maxIt;
 
-	auto epsilon = 0.00001f;
+    // TODO: use accumulate
     auto totalFitness = 0.0f;
 
-	for (auto i = 0; i < populationSize; ++i)
-	{
-		populationFitness[i] =
-			pow((max - evaluations[i]) / (max - min + epsilon) + 1, 10);
-		totalFitness += populationFitness[i];
-	}
+    for (auto i = 0; i < populationSize; ++i) {
+        populationFitness[i] =
+            pow((max - evaluations[i]) / (max - min + epsilon) + 1, 10);
+        totalFitness += populationFitness[i];
+    }
 
-	auto prevProb = 0.0f;
+    auto prevProb = 0.0f;
 
-	for (auto i = 0; i < populationSize; ++i)
-	{
-		selectionProbability[i] = prevProb +
-			(populationFitness[i] / totalFitness);
-		prevProb = selectionProbability[i];
-	}
+    for (auto i = 0; i < populationSize; ++i) {
+        selectionProbability[i] =
+            prevProb + (populationFitness[i] / totalFitness);
+        prevProb = selectionProbability[i];
+    }
 
-    //Do selection
+    // Do selection
     auto elites = 0.5 * populationSize;
     std::vector<std::pair<double, int>> sortedPopulation;
-    std::vector<std::vector<double>> newPopulation = std::vector<std::vector<double>>(
-        populationSize, std::vector<double>(dimensions));
-    std::vector<std::vector<double>> newVelocity = std::vector<std::vector<double>>(
-        populationSize, std::vector<double>(dimensions));
+    std::vector<std::vector<double>> newPopulation =
+        std::vector<std::vector<double>>(populationSize,
+                                         std::vector<double>(dimensions));
+    std::vector<std::vector<double>> newVelocity =
+        std::vector<std::vector<double>>(populationSize,
+                                         std::vector<double>(dimensions));
 
-    for (auto i = 0; i < populationSize; ++i)
-    {
+    for (auto i = 0; i < populationSize; ++i) {
         sortedPopulation.push_back(std::make_pair(populationFitness[i], i));
     }
 
     std::sort(sortedPopulation.begin(), sortedPopulation.end());
 
-    for (auto i = 0; i < elites; ++i)
-    {
-        newPopulation[i] = population[sortedPopulation[sortedPopulation.size() - i - 1].second];
-        newVelocity[i] = populationVelocity[sortedPopulation[sortedPopulation.size() - i - 1].second];
+    for (auto i = 0; i < elites; ++i) {
+        newPopulation[i] =
+            population[sortedPopulation[sortedPopulation.size() - i - 1]
+                           .second];
+        newVelocity[i] =
+            populationVelocity[sortedPopulation[sortedPopulation.size() - i - 1]
+                                   .second];
     }
 
-	for (auto i = elites; i < populationSize; ++i)
-	{
-		auto r = randomDouble(gen);
-		auto selected = populationSize - 1;
+    for (auto i = elites; i < populationSize; ++i) {
+        auto r = randomDouble(gen);
+        auto selected = populationSize - 1;
 
-		for (auto j = 0; j < populationSize; ++j)
-		{
-			if (r < selectionProbability[j])
-			{
-				selected = j;
-				break;
-			}
-		}
+        for (auto j = 0; j < populationSize; ++j) {
+            if (r < selectionProbability[j]) {
+                selected = j;
+                break;
+            }
+        }
         newPopulation[i] = population[selected];
         newVelocity[i] = populationVelocity[selected];
-	}
+    }
 
-	population = newPopulation;
+    population = newPopulation;
     populationVelocity = newVelocity;
 }
 
@@ -256,13 +241,13 @@ void Swarm::endIteration()
 void Swarm::mutate()
 {
     // TODO: generate positions
-    if (not augment) {
+    if (chaosCoef <= 0.0) {
         return;
     }
-    std::for_each(indices.begin(), indices.end(), [this](auto i) {
+    std::for_each(indices.begin(), indices.end(), [&](auto i) {
         std::transform(populationVelocity[i].begin(),
                        populationVelocity[i].end(),
-                       populationVelocity[i].begin(), [this](const auto x) {
+                       populationVelocity[i].begin(), [&](const auto x) {
                            if (randomDouble(gen) < chaosCoef) {
                                return randomFromDomainRange(gen);
                            }
@@ -273,11 +258,10 @@ void Swarm::mutate()
 
 void Swarm::updateVelocity(const std::vector<double>& swarmsBest)
 {
-
     // par_unseq or unseq?
     std::for_each(
         std::execution::par_unseq, indices.begin(), indices.end(),
-        [&swarmsBest, this](const auto i) {
+        [&](const auto i) {
             const auto rCognition = randomDouble(gen);
             const auto rSocial = randomDouble(gen);
             const auto rInertia = randomDouble(gen);
@@ -289,14 +273,14 @@ void Swarm::updateVelocity(const std::vector<double>& swarmsBest)
                 // necessary to iterate through all particles all dimensions, we
                 // can generate the positions that are going to be mutated
                 populationVelocity[i][d] =
-                    rInertia * populationInertia[i] *
-                        populationVelocity[i][d] +
+                    rInertia * populationInertia[i] * populationVelocity[i][d] +
                     cognition * rCognition *
                         (populationPastBests[i][d] - population[i][d]) +
                     social * rSocial *
-                        (getVisibleBest(i, d) - population[i][d])
-                    + swarmAttraction * rSwarm * (swarmsBest[d] - population[i][d])
-                    ;
+                        (getVisibleBest(i, d) - population[i][d]) +
+                    getJitter() +
+                    swarmAttraction * rSwarm *
+                        (swarmsBest[d] - population[i][d]);
 
                 // TODO: Use modulo arithmetics
                 if (populationVelocity[i][d] > constants::valuesRange) {
@@ -331,15 +315,14 @@ void Swarm::evaluate()
 {
     // cannot be parallelized because exception triggers std::terminate
     std::transform(population.begin(), population.end(), aux.begin(),
-                   evaluations.begin(),
-                   [this](const auto& particle, auto& aux) {
-                       return functionManager->operator()(particle, aux);
+                   evaluations.begin(), [&](const auto& particle, auto& aux) {
+                       return function(particle, aux);
                    });
 }
 
 void Swarm::updateBest()
 {
-    std::for_each(indices.begin(), indices.end(), [this](const auto i) {
+    std::for_each(indices.begin(), indices.end(), [&](const auto i) {
         if (evaluations[i] < populationPastBestEval[i]) {
             populationPastBestEval[i] = evaluations[i];
             populationPastBests[i] = population[i];
@@ -363,7 +346,7 @@ void Swarm::updateInertia()
 {
     std::transform(std::execution::unseq, evaluations.begin(),
                    evaluations.end(), populationInertia.begin(),
-                   [this](const auto evaluation) {
+                   [&](const auto evaluation) {
                        return (inertia + (1.0 - (globalBestEval / evaluation)) *
                                              (1.0 - inertia)) *
                               randomDouble(gen);
@@ -371,7 +354,7 @@ void Swarm::updateInertia()
 }
 
 double Swarm::getStarBest([[maybe_unused]] std::size_t index,
-                        std::size_t dimension) const
+                          std::size_t dimension) const
 {
     return globalBest[dimension];
 }
@@ -392,14 +375,14 @@ double Swarm::getStaticRingBest(std::size_t index, std::size_t dimension) const
     return populationPastBests[index][dimension];
 }
 
-double Swarm::getBestEvaluation()
+double Swarm::getBestEvaluation() const
 {
     return globalBestEval;
 }
 
-const std::vector<double>& Swarm::getBestParticle()
+std::vector<double> Swarm::getBestParticle() const
 {
     return globalBest;
 }
 
-} // namespace swarm
+} // namespace pso::swarm

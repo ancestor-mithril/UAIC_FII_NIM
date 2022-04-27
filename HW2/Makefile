@@ -2,7 +2,7 @@ BUILDDIR=build
 APP=app
 RELEASE=-O3 -DNDEBUG
 CMAKE_CXX_FLAGS=-std=c++20 -Wall -Wextra -Wpedantic -pthread
-GCC=g++-11
+GCC=g++
 
 builddir:
 	if [[ -d "${BUILDDIR}" ]]; then echo "Directory ${BUILDDIR} already exists"; else echo "Creating ${BUILDDIR}"; mkdir ${BUILDDIR}; fi;
@@ -23,6 +23,8 @@ format:
 	clang-format -i ./pso/utils/Timer.cpp
 	clang-format -i ./pso/pso/PSO.h
 	clang-format -i ./pso/pso/PSO.cpp
+	clang-format -i ./pso/swarm/Swarm.cpp
+	clang-format -i ./pso/swarm/Swarm.h
 	clang-format -i ./pso/main.cpp
 	clang-format -i ./KDTree/KDTree.hpp
 	clang-format -i ./KDTree/KDTree.cpp

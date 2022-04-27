@@ -29,8 +29,7 @@ std::string vecToString(const std::vector<double>& v)
 PSO getDefault(std::string_view functionName, int dimensions)
 {
     return PSO{
-        {swarm::Swarm(dimensions, 500, 150, 0.3, 1.0, 3.0, 0.1, 0.001,
-                      swarm::topology::Star, true)},
+        {{}, {}},
         functionName,
         dimensions,
         cacheStrategy::Nearest, // cacheRetrievalStrategy
@@ -41,43 +40,38 @@ PSO getDefault(std::string_view functionName, int dimensions)
 
 // clang-format off
 PSO::PSO(
-        std::vector<swarm::Swarm> swarms,
+        std::vector<swarm::SwarmParameters> swarms,
         std::string_view functionName,
         int dimensions,
         cacheStrategy cacheRetrievalStrategy,
         bool shiftFlag,
         bool rotateFlag
     )
-    : populations{swarms}
-    , functionManager{
-        std::make_shared<function_layer::FunctionManager>(
-            functionName, 
-            dimensions, 
-            cacheRetrievalStrategy, 
-            shiftFlag, 
-            rotateFlag
-        )
-    }
-    , dimensions{dimensions}
+    : functionManager{
+        functionName, 
+        dimensions, 
+        cacheRetrievalStrategy, 
+        shiftFlag, 
+        rotateFlag}
 // clang-format on
 {
-    // Add the functionManager to each swarm. Refactor this in the future
+    // TODO: read from file
+    std::random_device rd;
 
-    for (auto& swarm : populations) {
-        swarm.initialize(functionManager);
+    for (auto& swarm : swarms) {
+        populations.push_back(
+            swarm::Swarm{dimensions, swarm, rd, functionManager});
     }
-
-    retrieveBestAmongSwarms();
 }
 
 bool PSO::stop() const
 {
-    return globalBestEval <= constants::best or currentEpoch > 10000;
+    return globalBestEval <= constants::best;
 }
 
 int PSO::getCacheHits() const
 {
-    return functionManager->hitCount();
+    return functionManager.hitCount();
 }
 
 std::string PSO::getBestVector() const
@@ -101,22 +95,22 @@ double PSO::run()
 
 void PSO::runInternal()
 {
-    // TODO: use a better stopping criterion
     while (not stop()) {
+        retrieveBestAmongSwarms();
+
+        // TODO: refactor this to vectorize
         for (auto& swarm : populations) {
             swarm.updatePopulation(globalBest);
         }
 
-        retrieveBestAmongSwarms();
         ++currentEpoch;
     }
 }
 
 void PSO::retrieveBestAmongSwarms()
 {
-    for (auto& swarm : populations) {
-        double swarmEvaluation = swarm.getBestEvaluation();
-
+    for (const auto& swarm : populations) {
+        const auto swarmEvaluation = swarm.getBestEvaluation();
         if (swarmEvaluation < globalBestEval) {
             globalBestEval = swarmEvaluation;
             globalBest = swarm.getBestParticle();

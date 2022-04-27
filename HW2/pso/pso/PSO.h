@@ -19,7 +19,7 @@ class PSO
 {
   public:
     // clang-format off
-    PSO(std::vector<swarm::Swarm> swarms,
+    PSO(std::vector<swarm::SwarmParameters> swarms,
         std::string_view functionName,
         int dimensions,
         cacheStrategy cacheRetrievalStrategy,
@@ -37,10 +37,9 @@ class PSO
     bool stop() const;
     void retrieveBestAmongSwarms();
 
+    function_layer::FunctionManager functionManager;
     std::vector<swarm::Swarm> populations;
-    std::shared_ptr<function_layer::FunctionManager> functionManager;
 
-    const int dimensions;
     int currentEpoch = 0;
 
     std::vector<double> globalBest;

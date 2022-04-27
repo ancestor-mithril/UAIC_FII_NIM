@@ -13,12 +13,14 @@
 using cacheStrategy =
     function_layer::cache_layer::KDTreeCache::CacheRetrievalStrategy;
 
+using namespace pso::swarm;
+
 void runDefault();
 void runTest();
 void runExperiment(int dimensions, int resetThreshold, double inertia,
                    double cognition, double social, double swarmAttraction,
                    double chaosCoef, cacheStrategy cacheRetrievalStrategy,
-                   swarm::topology topology, bool augment);
+                   pso::swarm::topology topology);
 void timeTest();
 
 void fineTuning(int argc, char* argv[]);
@@ -29,12 +31,13 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     // runDefault();
     // runTest();
 
-    runExperiment(10, 100, 0.3, 1.0, 3.0, 0.1, 0.001,
-    cacheStrategy::FirstNeighbor,
-                  swarm::topology::StaticRing, true);
+    // runExperiment(10, 100, 0.3, 1.0, 3.0, 0.1, 0.001,
+    // cacheStrategy::FirstNeighbor,
+    //               pso::swarm::topology::StaticRing);
 
     // timeTest();
-    //fineTuning(argc, argv);
+
+    fineTuning(argc, argv);
     return 0;
 }
 
@@ -85,19 +88,15 @@ std::pair<double, int>
 runOnce(std::string_view functionName, int dimensions, int resetThreshold,
         double inertia, double cognition, double social, double swarmAttraction,
         double chaosCoef, cacheStrategy cacheRetrievalStrategy,
-        swarm::topology topology, bool augment)
+        pso::swarm::topology topology)
 {
     auto pso = pso::PSO(
         {
-            swarm::Swarm(dimensions, 100, resetThreshold, 0.3, 1.0, 3.0, 0.0,
-                         chaosCoef, swarm::topology::StaticRing, augment),
-            swarm::Swarm(dimensions, 100, resetThreshold, 0.5, 1.0, 3.0, 0.001,
-                         chaosCoef, swarm::topology::Star, augment),
-            swarm::Swarm(dimensions, 100, resetThreshold, 0.5, 1.0, 3.0, 0.001,
-                         chaosCoef, swarm::topology::StaticRing, augment),
+            SwarmParameters{500, resetThreshold, inertia, cognition, social,
+                            swarmAttraction, chaosCoef, topology, false, false},
         },
         functionName, dimensions, cacheRetrievalStrategy, true, true);
-    // TODO: Add time measurements and write them to file
+
     auto value = pso.run();
 
     auto cacheHits = pso.getCacheHits();
@@ -106,7 +105,7 @@ runOnce(std::string_view functionName, int dimensions, int resetThreshold,
 
 std::vector<double>
 run30Times(std::string_view functionName, int dimensions,
-           const std::vector<swarm::Swarm>& swarms, int runs)
+           const std::vector<SwarmParameters>& swarms, int runs)
 {
     auto ret = std::vector<double>();
     ret.reserve(runs);
@@ -122,16 +121,16 @@ std::vector<std::pair<double, int>>
 run30Times(std::string_view functionName, int dimensions, int resetThreshold,
            double inertia, double cognition, double social,
            double swarmAttraction, double chaosCoef,
-           cacheStrategy cacheRetrievalStrategy, swarm::topology topology,
-           bool augment, int runs)
+           cacheStrategy cacheRetrievalStrategy, pso::swarm::topology topology,
+           int runs)
 {
     auto ret = std::vector<std::pair<double, int>>(runs, {-100.0, 0});
     std::transform(std::execution::par_unseq, ret.begin(), ret.end(),
                    ret.begin(), [=]([[maybe_unused]] const auto& x) {
-                       return runOnce(
-                           functionName, dimensions, resetThreshold, inertia,
-                           cognition, social, swarmAttraction, chaosCoef,
-                           cacheRetrievalStrategy, topology, augment);
+                       return runOnce(functionName, dimensions, resetThreshold,
+                                      inertia, cognition, social,
+                                      swarmAttraction, chaosCoef,
+                                      cacheRetrievalStrategy, topology);
                    });
     return ret;
 }
@@ -158,8 +157,7 @@ void timeTest()
 
         for (auto& func : functions) {
             run30Times(func, 10, i, 0.3, 1.0, 3.0, 0.1, 0.001,
-                       cacheStrategy::FirstNeighbor, swarm::topology::Star,
-                       true, 10);
+                       cacheStrategy::FirstNeighbor, topology::Star, 10);
         }
         std::cout << utils::timer::Timer::getStatistics() << std::endl;
         utils::timer::Timer::clean();
@@ -170,8 +168,7 @@ void timeTest()
 
         for (auto& func : functions) {
             run30Times(func, 10, i, 0.3, 1.0, 3.0, 0.1, 0.001,
-                       cacheStrategy::FirstNeighbor, swarm::topology::Star,
-                       true, 10);
+                       cacheStrategy::FirstNeighbor, topology::Star, 10);
         }
         std::cout << utils::timer::Timer::getStatistics() << std::endl;
         utils::timer::Timer::clean();
@@ -182,8 +179,7 @@ void timeTest()
 
         for (auto& func : functions) {
             run30Times(func, 10, i, 0.3, 1.0, 3.0, 0.1, 0.001,
-                       cacheStrategy::FirstNeighbor, swarm::topology::Star,
-                       true, 10);
+                       cacheStrategy::FirstNeighbor, topology::Star, 10);
         }
         std::cout << utils::timer::Timer::getStatistics() << std::endl;
         utils::timer::Timer::clean();
@@ -191,9 +187,9 @@ void timeTest()
 }
 
 double runForFunction(std::string_view f, int dimensions,
-                      const std::vector<swarm::Swarm>& swarms)
+                      const std::vector<SwarmParameters>& swarms)
 {
-    const auto rez = run30Times(f, dimensions, swarms, 10);
+    const auto rez = run30Times(f, dimensions, swarms, 4);
     return std::accumulate(
                rez.begin(), rez.end(), 0.0,
                [](auto f, auto elem) { return std::move(f) + elem; }) /
@@ -204,12 +200,12 @@ double runForFunction(std::string_view f, int dimensions, int resetThreshold,
                       double inertia, double cognition, double social,
                       double swarmAttraction, double chaosCoef,
                       cacheStrategy cacheRetrievalStrategy,
-                      swarm::topology topology, bool augment)
+                      pso::swarm::topology topology)
 {
     const auto start = std::chrono::high_resolution_clock::now();
     const auto rez = run30Times(f, dimensions, resetThreshold, inertia,
                                 cognition, social, swarmAttraction, chaosCoef,
-                                cacheRetrievalStrategy, topology, augment, 30);
+                                cacheRetrievalStrategy, topology, 30);
     const auto end = std::chrono::high_resolution_clock::now();
     const auto duration =
         std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
@@ -231,8 +227,7 @@ double runForFunction(std::string_view f, int dimensions, int resetThreshold,
         '_' + std::to_string(inertia) + '_' + std::to_string(resetThreshold) +
         '_' + std::to_string(cognition) + '_' + std::to_string(social) + '_' +
         std::to_string(swarmAttraction) + '_' + std::to_string(chaosCoef) +
-        '_' + std::to_string((int)cacheRetrievalStrategy) + '_' +
-        std::to_string(augment) + "2";
+        '_' + std::to_string((int)cacheRetrievalStrategy) + '_' + "2";
     std::ofstream file{fileName};
     for (auto [x, _] : rez) {
         file << x << ' ';
@@ -249,7 +244,7 @@ double runForFunction(std::string_view f, int dimensions, int resetThreshold,
 void runExperiment(int dimensions, int resetThreshold, double inertia,
                    double cognition, double social, double swarmAttraction,
                    double chaosCoef, cacheStrategy cacheRetrievalStrategy,
-                   swarm::topology topology, bool augment)
+                   pso::swarm::topology topology)
 {
     const auto functions = std::vector<std::string>{
         "zakharov_func",
@@ -271,10 +266,10 @@ void runExperiment(int dimensions, int resetThreshold, double inertia,
     for (auto& f : functions) {
         // futures.push_back(std::jthread{
         //     runForFunction, f, dimensions, resetThreshold, inertia,
-        //     cognition, social, chaosCoef, cacheRetrievalStrategy, augment});
+        //     cognition, social, chaosCoef, cacheRetrievalStrategy});
         runForFunction(f, dimensions, resetThreshold, inertia, cognition,
                        social, swarmAttraction, chaosCoef,
-                       cacheRetrievalStrategy, topology, augment);
+                       cacheRetrievalStrategy, topology);
     }
     for (auto& f : futures) {
         f.join();
@@ -282,12 +277,12 @@ void runExperiment(int dimensions, int resetThreshold, double inertia,
     // std::cout << meanSum << '\n';
 }
 
-swarm::topology getTopology(std::string_view topology)
+pso::swarm::topology getTopology(std::string_view topology)
 {
     if (topology == "Star") {
-        return swarm::topology::Star;
+        return pso::swarm::topology::Star;
     } else if (topology == "Ring") {
-        return swarm::topology::StaticRing;
+        return pso::swarm::topology::StaticRing;
     } else {
         throw std::runtime_error("Unknown topology");
     }
@@ -295,10 +290,10 @@ swarm::topology getTopology(std::string_view topology)
 
 void fineTuning(int argc, char* argv[])
 {
-    std::cout << "Argc: " << argc << std::endl;
-    for (auto i = 1; i < argc; ++i) {
-        std::cout << argv[i] << std::endl;
-    }
+    // std::cout << "Argc: " << argc << std::endl;
+    // for (auto i = 1; i < argc; ++i) {
+    //     std::cout << argv[i] << std::endl;
+    // }
 
     if (argc < 3) {
         throw std::runtime_error("Wrong number of arguments");
@@ -306,13 +301,13 @@ void fineTuning(int argc, char* argv[])
 
     const auto dimensions = std::stoi(argv[1]);
     const auto swarms = std::stoi(argv[2]);
-    constexpr auto x = 8;
+    constexpr auto x = 10;
 
     if (argc < 3 + swarms * x) {
         throw std::runtime_error("Wrong number of arguments for swarms");
     }
 
-    std::vector<swarm::Swarm> swarmsVec;
+    std::vector<SwarmParameters> swarmsVec;
 
     for (auto i = 0; i < swarms; ++i) {
 
@@ -324,10 +319,13 @@ void fineTuning(int argc, char* argv[])
         const auto swarmAttraction = std::stod(argv[8 + i * x]);
         const auto chaosCoef = std::stod(argv[9 + i * x]);
         const auto topology = getTopology(argv[10 + i * x]);
-        const auto augment = (chaosCoef > 0.0);
-        swarmsVec.push_back({dimensions, populationSize, resetThreshold,
-                             inertia, cognition, social, swarmAttraction,
-                             chaosCoef, topology, augment});
+        const auto selectionString = std::string{argv[11 + i * x]};
+        const auto selection = (selectionString == "true");
+        const auto jitterString = std::string{argv[12 + i * x]};
+        const auto jitter = (jitterString == "true");
+        swarmsVec.push_back({populationSize, resetThreshold, inertia, cognition,
+                             social, swarmAttraction, chaosCoef, topology,
+                             selection, jitter});
     }
 
     const auto hardFunctions = {"cf01", "cf02", "cf04"};
