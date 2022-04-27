@@ -29,12 +29,12 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     // runDefault();
     // runTest();
 
-    // runExperiment(10, 100, 0.3, 1.0, 3.0, 0.1, 0.001,
-    // cacheStrategy::FirstNeighbor,
-    //               swarm::topology::StaticRing, true);
+    runExperiment(10, 100, 0.3, 1.0, 3.0, 0.1, 0.001,
+    cacheStrategy::FirstNeighbor,
+                  swarm::topology::StaticRing, true);
 
     // timeTest();
-    fineTuning(argc, argv);
+    //fineTuning(argc, argv);
     return 0;
 }
 

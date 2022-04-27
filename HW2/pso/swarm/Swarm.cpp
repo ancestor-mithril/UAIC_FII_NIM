@@ -97,6 +97,8 @@ Swarm::Swarm(
         populationSize, std::vector<double>(dimensions));
     populationInertia = std::vector<double>(populationSize);
     evaluations = std::vector<double>(populationSize);
+    populationFitness = std::vector<double>(populationSize);
+    selectionProbability = std::vector<double>(populationSize);
     populationPastBestEval = std::vector<double>(
         populationSize, std::numeric_limits<double>::infinity());
     globalBest.resize(dimensions);
@@ -135,6 +137,7 @@ void Swarm::resetPopulation()
         randomizeVector(population[i], randomFromDomain, gen);
         randomizeVector(populationVelocity[i], randomFromDomainRange, gen);
         const auto particleValue = functionManager->operator()(population[i], aux[i]);
+        evaluations[i] = particleValue;
 
         if (particleValue < populationPastBestEval[i]) {
             populationPastBests[i] = population[i];
@@ -158,12 +161,81 @@ std::string Swarm::getBestVector() const
 void Swarm::updatePopulation(const std::vector<double>& swarmsBest)
 {
     checkForPopulationReset();
+    selectNewPopulation();
     mutate();
     updateVelocity(swarmsBest);
     evaluate();
     updateBest();
     updateInertia();
     endIteration();
+}
+
+void Swarm::selectNewPopulation()
+{
+    //Calculate selection probability
+    auto [minIt, maxIt] = std::minmax_element(evaluations.begin(), evaluations.end());
+    auto min = *minIt;
+    auto max = *maxIt;
+
+	auto epsilon = 0.00001f;
+    auto totalFitness = 0.0f;
+
+	for (auto i = 0; i < populationSize; ++i)
+	{
+		populationFitness[i] =
+			pow((max - evaluations[i]) / (max - min + epsilon) + 1, 10);
+		totalFitness += populationFitness[i];
+	}
+
+	auto prevProb = 0.0f;
+
+	for (auto i = 0; i < populationSize; ++i)
+	{
+		selectionProbability[i] = prevProb +
+			(populationFitness[i] / totalFitness);
+		prevProb = selectionProbability[i];
+	}
+
+    //Do selection
+    auto elites = 0.5 * populationSize;
+    std::vector<std::pair<double, int>> sortedPopulation;
+    std::vector<std::vector<double>> newPopulation = std::vector<std::vector<double>>(
+        populationSize, std::vector<double>(dimensions));
+    std::vector<std::vector<double>> newVelocity = std::vector<std::vector<double>>(
+        populationSize, std::vector<double>(dimensions));
+
+    for (auto i = 0; i < populationSize; ++i)
+    {
+        sortedPopulation.push_back(std::make_pair(populationFitness[i], i));
+    }
+
+    std::sort(sortedPopulation.begin(), sortedPopulation.end());
+
+    for (auto i = 0; i < elites; ++i)
+    {
+        newPopulation[i] = population[sortedPopulation[sortedPopulation.size() - i - 1].second];
+        newVelocity[i] = populationVelocity[sortedPopulation[sortedPopulation.size() - i - 1].second];
+    }
+
+	for (auto i = elites; i < populationSize; ++i)
+	{
+		auto r = randomDouble(gen);
+		auto selected = populationSize - 1;
+
+		for (auto j = 0; j < populationSize; ++j)
+		{
+			if (r < selectionProbability[j])
+			{
+				selected = j;
+				break;
+			}
+		}
+        newPopulation[i] = population[selected];
+        newVelocity[i] = populationVelocity[selected];
+	}
+
+	population = newPopulation;
+    populationVelocity = newVelocity;
 }
 
 void Swarm::checkForPopulationReset()
