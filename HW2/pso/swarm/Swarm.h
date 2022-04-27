@@ -53,6 +53,7 @@ class Swarm
     void evaluate();
     void updateBest();
     void updateInertia();
+    void selectNewPopulation();
     void endIteration();
 
     double getStaticRingBest(std::size_t index, std::size_t dimension) const;
@@ -89,6 +90,8 @@ class Swarm
     std::vector<std::vector<double>> populationPastBests;
     std::vector<double> populationInertia;
     std::vector<double> evaluations;
+    std::vector<double> populationFitness;
+    std::vector<double> selectionProbability;
     std::vector<double> populationPastBestEval;
     std::vector<double> globalBest;
     std::vector<std::size_t> indices;
