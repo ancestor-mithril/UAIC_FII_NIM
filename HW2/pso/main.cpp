@@ -92,8 +92,8 @@ runOnce(std::string_view functionName, int dimensions, int resetThreshold,
 {
     auto pso = pso::PSO(
         {
-            SwarmParameters{500, resetThreshold, inertia, cognition, social,
-                            swarmAttraction, chaosCoef, topology, false, false},
+            SwarmParameters{50, 100, 0.1, 1.5, 3.0, 0.01, 0.0, pso::swarm::topology::StaticRing, false, true},
+            SwarmParameters{50, 20, 0.5, 1.5, 3.0, 0.01, 0.01, pso::swarm::topology::Star, false, true},
         },
         functionName, dimensions, cacheRetrievalStrategy, true, true);
 
@@ -247,17 +247,17 @@ void runExperiment(int dimensions, int resetThreshold, double inertia,
                    pso::swarm::topology topology)
 {
     const auto functions = std::vector<std::string>{
-        "zakharov_func",
-        "rosenbrock_func",
-        "schaffer_F7_func",
-        "rastrigin_func", // blocked
-        "levy_func",      // blocked
-        "hf01",           // semi-blocked
-        "hf02",           // blocked
-        "hf03",           // blocked
+        // "zakharov_func",
+        // "rosenbrock_func",
+        // "schaffer_F7_func",
+        // "rastrigin_func", // blocked
+        // "levy_func",      // blocked
+        // "hf01",           // semi-blocked
+        // "hf02",           // blocked
+        // "hf03",           // blocked
         "cf01",           // blocked
         "cf02",           // blocked
-        "cf03",           // blocked
+        //"cf03",           // blocked
         "cf04"            // blocked
     };
 
@@ -308,6 +308,7 @@ void fineTuning(int argc, char* argv[])
     }
 
     std::vector<SwarmParameters> swarmsVec;
+    std::vector<std::string> swarmsParameters;
 
     for (auto i = 0; i < swarms; ++i) {
 
@@ -334,7 +335,10 @@ void fineTuning(int argc, char* argv[])
     const auto meanSum = std::accumulate(
         hardFunctions.begin(), hardFunctions.end(), 0.0,
         [&](auto f, auto fName) {
-            return std::move(f) + runForFunction(fName, dimensions, swarmsVec);
+            auto result = runForFunction(fName, dimensions, swarmsVec);
+            std::cout << fName << ": " << result << std::endl;
+
+            return std::move(f) + result;
         });
 
     const auto end = std::chrono::high_resolution_clock::now();
@@ -345,4 +349,20 @@ void fineTuning(int argc, char* argv[])
     std::cout << utils::timer::Timer::getStatistics() << std::endl;
     utils::timer::Timer::clean();
     std::cout << "meanSum: " << meanSum << '\n';
+    
+    std::cout << "Parameters:" << '\n';
+    for(auto i = 0; i < swarms; ++i) {
+        std::cout << 
+            std::string(argv[3 + i * x]) + " " + 
+            std::string(argv[4 + i * x]) + " " +
+            std::string(argv[5 + i * x]) + " " + 
+            std::string(argv[6 + i * x]) + " " +
+            std::string(argv[7 + i * x]) + " " + 
+            std::string(argv[8 + i * x]) + " " +
+            std::string(argv[9 + i * x]) + " " + 
+            std::string(argv[10 + i * x]) + " " +
+            std::string(argv[11 + i * x]) + " " + 
+            std::string(argv[12 + i * x])
+        << '\n';
+    }
 }

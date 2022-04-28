@@ -29,7 +29,7 @@ struct SwarmParameters {
     double social = 3.0;
     double swarmAttraction = 0.0;
     double chaosCoef = 0.0;
-    topology topology = topology::Star;
+    topology topology_ = topology::Star;
     bool selection = false;
     bool jitter = false;
 };

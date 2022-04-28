@@ -13,7 +13,7 @@ def run1(line):
     index, line = line
     print(index)
     f = open(f"experiments/1-{index}.txt", "w")
-    args = ["./build/app.exe", "10", "1", ] + line.split() + ["true", "false"]
+    args = ["./build/app.exe", "10", "1", ] + line.split() + ["false", "true"]
     subprocess.call(args, stdout=f)
     return 0
 
@@ -21,7 +21,7 @@ def run2(line):
     index, line = line
     print(index)
     f = open(f"experiments/2-{index}.txt", "w")
-    args = ["./build/app.exe", "10", "2", ] + line[0].split() + ["true", "false"] + line[1].split() + ["true", "false"]
+    args = ["./build/app.exe", "10", "2", ] + line[0].split() + ["false", "true"] + line[1].split() + ["false", "true"]
     subprocess.call(args, stdout=f)
     return 0
 
@@ -30,9 +30,9 @@ def run3(line):
     print(index)
     f = open(f"experiments/3-{index}.txt", "w")
     args = ["./build/app.exe", "10", "3", ] \
-        + line[0].split() + ["true", "false"] + \
-            line[1].split() + ["true", "false"] + \
-                line[2].split() + ["true", "false"]
+        + line[0].split() + ["false", "true"] + \
+            line[1].split() + ["false", "true"] + \
+                line[2].split() + ["false", "true"]
     subprocess.call(args, stdout=f)
     return 0
 
@@ -58,3 +58,5 @@ def use3(usedLines):
         results = p.map(run3, enumerate(usedLines))
 
 use1(read_lines()[0])
+use2(read_lines()[0])
+use3(read_lines()[0])

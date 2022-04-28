@@ -59,7 +59,7 @@ Swarm::Swarm(
     , social{parameters.social}
     , swarmAttraction{parameters.swarmAttraction}
     , chaosCoef{parameters.chaosCoef}
-    , swarmTopology{parameters.topology}
+    , swarmTopology{parameters.topology_}
     , selection{parameters.selection}
 // clang-format on
 {

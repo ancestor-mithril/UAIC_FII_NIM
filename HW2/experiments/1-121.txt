@@ -1,0 +1,13 @@
+cf01: 375.042
+cf02: 127.554
+cf04: 185.642
+It took 15.281 seconds 
+Timer statistics:
+FunctionManager::callFunction: 2.94111 s
+Insert into KDTree: 0.930519 s
+KDTree first neighbor: 3.35772 s
+Recreate KDTree: 1.0666 s
+
+meanSum: 688.238
+Parameters:
+50 20 0.1 2.0 1.5 0.001 0.0 Ring false true

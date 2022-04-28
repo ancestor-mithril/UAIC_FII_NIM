@@ -2,7 +2,7 @@ BUILDDIR=build
 APP=app
 RELEASE=-O3 -DNDEBUG
 CMAKE_CXX_FLAGS=-std=c++20 -Wall -Wextra -Wpedantic -pthread
-GCC=g++
+GCC=g++-11
 
 builddir:
 	if [[ -d "${BUILDDIR}" ]]; then echo "Directory ${BUILDDIR} already exists"; else echo "Creating ${BUILDDIR}"; mkdir ${BUILDDIR}; fi;
