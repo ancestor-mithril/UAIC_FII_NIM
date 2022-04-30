@@ -12,6 +12,7 @@
 #include <sstream>
 #include <unordered_map>
 
+using namespace cec22;
 namespace fs = std::filesystem;
 
 namespace ga {
@@ -187,7 +188,6 @@ std::function<double(std::vector<double>&, std::vector<double>&)>
 FunctionManager::initFunction(int dimensions, bool shiftFlag, bool rotateFlag)
 {
     using namespace std::string_literals;
-    using namespace ga::functions;
     const std::unordered_map<
         std::string,
         std::tuple<int,

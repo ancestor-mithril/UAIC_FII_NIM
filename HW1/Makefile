@@ -68,15 +68,19 @@ gdb: debug
 
 all: clean format run
 
-exp: rel1 # TODO: add hf02, hf03, cf03, cf04
-	./${BUILDDIR}/${APP}.exe zakharov_func & \
-	./${BUILDDIR}/${APP}.exe rosenbrock_func & \
-	./${BUILDDIR}/${APP}.exe schaffer_F7_func & \
-	./${BUILDDIR}/${APP}.exe rastrigin_func & \
-	./${BUILDDIR}/${APP}.exe levy_func & \
-	./${BUILDDIR}/${APP}.exe hf01 & \
-	./${BUILDDIR}/${APP}.exe cf01 & \
-	./${BUILDDIR}/${APP}.exe cf02 & \
+exp: rel1
+	./${BUILDDIR}/${APP}.exe zakharov_func
+	./${BUILDDIR}/${APP}.exe rosenbrock_func
+	./${BUILDDIR}/${APP}.exe schaffer_F7_func
+	./${BUILDDIR}/${APP}.exe rastrigin_func
+	./${BUILDDIR}/${APP}.exe levy_func
+	./${BUILDDIR}/${APP}.exe hf01
+	./${BUILDDIR}/${APP}.exe hf02
+	./${BUILDDIR}/${APP}.exe hf03
+	./${BUILDDIR}/${APP}.exe cf01
+	./${BUILDDIR}/${APP}.exe cf02
+	./${BUILDDIR}/${APP}.exe cf03
+	./${BUILDDIR}/${APP}.exe cf04
 
 exp1: rel1
 	./${BUILDDIR}/${APP}.exe 1

@@ -8,7 +8,6 @@
 #include <map>
 #include <vector>
 
-void test();
 void runExperiments();
 void runExperiments1();
 void runExperiments2(const std::string& functionName);
@@ -17,7 +16,7 @@ int main(int argc, char** argv)
 
     if (argc < 2) {
         // runExperiments();
-        test();
+        // test();
     } else {
         if (argv[1] == std::string{"1"}) {
             runExperiments1();
@@ -27,7 +26,7 @@ int main(int argc, char** argv)
             return 0;
         }
         
-        std::ofstream fout{"experiments/20/2/" + std::string{argv[1]}};
+        std::ofstream fout{"experiments/10/2/" + std::string{argv[1]}};
         for (auto i = 0; i < 30; ++i) {
             auto ga = ga::getDefault(std::string{argv[1]});
             fout << ga.run() << std::endl;
@@ -333,14 +332,6 @@ void runExperiments2(const std::string& functionName)
     for (const auto [key, val] : selectionPressure) {
         fout << key << " -> " << val << '\n';
     }
-}
-
-void test()
-{
-    ga::functions::sanity_check();
-    auto ga = ga::getDefault("cf02");
-    ga.sanityCheck();
-    std::cout << ga.run() << '\n';
 }
 
 void runExperiments()
