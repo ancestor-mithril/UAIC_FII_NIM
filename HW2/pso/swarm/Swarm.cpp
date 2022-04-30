@@ -59,13 +59,13 @@ Swarm::Swarm(
     , social{parameters.social}
     , swarmAttraction{parameters.swarmAttraction}
     , chaosCoef{parameters.chaosCoef}
-    , swarmTopology{parameters.topology}
+    , swarmTopology{parameters.topology_}
     , selection{parameters.selection}
 // clang-format on
 {
     getJitter = [&]() -> std::function<double()> {
         if (parameters.jitter) {
-            return [&]() { return randomFromDomain(gen) * 0.0001; };
+            return [&]() { return randomFromDomain(gen) * 0.00005; };
         }
         return []() { return 0.0; };
     }();

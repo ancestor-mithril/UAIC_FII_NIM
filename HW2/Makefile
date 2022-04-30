@@ -2,7 +2,7 @@ BUILDDIR=build
 APP=app
 RELEASE=-O3 -DNDEBUG
 CMAKE_CXX_FLAGS=-std=c++20 -Wall -Wextra -Wpedantic -pthread
-GCC=g++
+GCC=g++-11
 
 builddir:
 	if [[ -d "${BUILDDIR}" ]]; then echo "Directory ${BUILDDIR} already exists"; else echo "Creating ${BUILDDIR}"; mkdir ${BUILDDIR}; fi;
@@ -48,8 +48,8 @@ run: release
 	./${BUILDDIR}/${APP}.exe
 
 experiments: release
-	./${BUILDDIR}/${APP}.exe 10 1 100 50 0.3 1.0 3.0 0.0 0.01 Star > 1.txt \
-	& ./${BUILDDIR}/${APP}.exe 10 1 100 50 0.3 1.0 3.0 0.0 0.01 Ring > 2.txt \
+	./${BUILDDIR}/${APP}.exe 10 3 50 100 0.5 2.0 2.0 0.1 0.01 Star false true 50 20 0.5 2.0 2.0 0.001 0.01 Star false true 50 20 0.5 2.0 2.0 0.001 0.01 Star false true > 1.txt \
+	# & ./${BUILDDIR}/${APP}.exe 10 1 100 50 0.3 1.0 3.0 0.0 0.01 Ring > 2.txt \
 	# & ./${BUILDDIR}/${APP}.exe 10 1 100 50 0.3 1.0 3.0 0.0 0.01 Ring \
 	# & ./${BUILDDIR}/${APP}.exe 10 1 100 50 0.3 1.0 3.0 0.0 0.01 Ring \
 	# & ./${BUILDDIR}/${APP}.exe 10 1 100 50 0.3 1.0 3.0 0.0 0.01 Ring \

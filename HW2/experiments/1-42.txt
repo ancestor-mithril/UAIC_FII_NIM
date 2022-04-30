@@ -1,0 +1,13 @@
+cf01: 229.32
+cf02: 100.569
+cf04: 166.976
+It took 16.791 seconds 
+Timer statistics:
+FunctionManager::callFunction: 4.29555 s
+Insert into KDTree: 0.842063 s
+KDTree first neighbor: 3.38842 s
+Recreate KDTree: 1.15624 s
+
+meanSum: 496.866
+Parameters:
+50 20 0.1 0.5 3.0 0.01 0.0 Star false true
