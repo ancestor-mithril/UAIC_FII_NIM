@@ -65,7 +65,7 @@ Swarm::Swarm(
 {
     getJitter = [&]() -> std::function<double()> {
         if (parameters.jitter) {
-            return [&]() { return randomFromDomain(gen) * 0.0001; };
+            return [&]() { return randomFromDomain(gen) * 0.00005; };
         }
         return []() { return 0.0; };
     }();

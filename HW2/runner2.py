@@ -57,6 +57,6 @@ def use3(usedLines):
     with Pool(8) as p:
         results = p.map(run3, enumerate(usedLines))
 
-use1(read_lines()[0])
-use2(read_lines()[0])
-use3(read_lines()[0])
+use1(read_lines()[1])
+use2(read_lines()[1])
+use3(read_lines()[1])

@@ -9,11 +9,15 @@ top_parameters = []
 def get_file_result(file_path, file):
     with open(file_path, 'r') as f:
         lines = f.readlines()
-        result_line = lines[10]
+        result_line = lines[19]
         result = float(result_line.split(' ')[1])
 
-        parameters_line = 12
-        data = '\n' + lines[0] + lines[1] + lines[2] + '\n'
+        data = '\n'
+        for i in range(12):
+            data += lines[i]
+
+        data += '\n'
+        parameters_line = 21
         for i in range(parameters_line, len(lines)):
             
             data += lines[i]

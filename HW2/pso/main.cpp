@@ -35,7 +35,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     // cacheStrategy::FirstNeighbor,
     //               pso::swarm::topology::StaticRing);
 
-    // timeTest();
+    //timeTest();
 
     fineTuning(argc, argv);
     return 0;
@@ -92,8 +92,8 @@ runOnce(std::string_view functionName, int dimensions, int resetThreshold,
 {
     auto pso = pso::PSO(
         {
-            SwarmParameters{50, 100, 0.1, 1.5, 3.0, 0.01, 0.0, pso::swarm::topology::StaticRing, false, true},
-            SwarmParameters{50, 20, 0.5, 1.5, 3.0, 0.01, 0.01, pso::swarm::topology::Star, false, true},
+            SwarmParameters{50, 20, 0.1, 0.5, 2.0, 0.01, 0.0, pso::swarm::topology::StaticRing, false, true},
+            SwarmParameters{50, 20, 0.1, 1.5, 2.0, 0.01, 0.001, pso::swarm::topology::StaticRing, false, true},
         },
         functionName, dimensions, cacheRetrievalStrategy, true, true);
 
@@ -247,17 +247,17 @@ void runExperiment(int dimensions, int resetThreshold, double inertia,
                    pso::swarm::topology topology)
 {
     const auto functions = std::vector<std::string>{
-        // "zakharov_func",
-        // "rosenbrock_func",
-        // "schaffer_F7_func",
-        // "rastrigin_func", // blocked
-        // "levy_func",      // blocked
-        // "hf01",           // semi-blocked
-        // "hf02",           // blocked
-        // "hf03",           // blocked
+        "zakharov_func",
+        "rosenbrock_func",
+        "schaffer_F7_func",
+        "rastrigin_func", // blocked
+        "levy_func",      // blocked
+        "hf01",           // semi-blocked
+        "hf02",           // blocked
+        "hf03",           // blocked
         "cf01",           // blocked
         "cf02",           // blocked
-        //"cf03",           // blocked
+        "cf03",           // blocked
         "cf04"            // blocked
     };
 
@@ -329,11 +329,24 @@ void fineTuning(int argc, char* argv[])
                              selection, jitter});
     }
 
-    const auto hardFunctions = {"cf01", "cf02", "cf04"};
+    const auto functions = {
+        "zakharov_func",
+        "rosenbrock_func",
+        "schaffer_F7_func",
+        "rastrigin_func", // blocked
+        "levy_func",      // blocked
+        "hf01",           // semi-blocked
+        "hf02",           // blocked
+        "hf03",           // blocked
+        "cf01",           // blocked
+        "cf02",           // blocked
+        "cf03",           // blocked
+        "cf04"            // blocked
+    };
     const auto start = std::chrono::high_resolution_clock::now();
 
     const auto meanSum = std::accumulate(
-        hardFunctions.begin(), hardFunctions.end(), 0.0,
+        functions.begin(), functions.end(), 0.0,
         [&](auto f, auto fName) {
             auto result = runForFunction(fName, dimensions, swarmsVec);
             std::cout << fName << ": " << result << std::endl;
