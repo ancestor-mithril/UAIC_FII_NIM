@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <execution>
 #include <functional>
 #include <iostream>
 #include <numeric>
@@ -32,25 +33,22 @@ void shiftfunc(const std::vector<double>& x, std::vector<double>& aux,
                const vector_begin shiftBegin)
 {
     // assuming x.size() == shift.size()
-    std::transform(x.begin(), x.end(), shiftBegin, aux.begin(),
-                   std::minus<double>());
-    // TODO: Check what nethods can be vectorized
+    std::transform(std::execution::unseq, x.begin(), x.end(), shiftBegin,
+                   aux.begin(), std::minus<double>());
 }
 
-void rotatefunc(std::vector<double>& vec, std::vector<double>& aux,
-                const matrix_begin rotateBegin)
+void rotatefunc(std::vector<double>& vec, const matrix_begin rotateBegin)
 {
     // assuming vec.size() == rotate.size() == rotate[0].size() == aux.size()
     const auto n = vec.size();
-    const auto auxBegin = aux.begin();
-    std::fill(auxBegin, std::next(auxBegin, n), 0.0); // setting aux with 0.0
+    auto aux = std::vector<double>(n, 0.0);
     for (std::size_t i = 0; i < n; ++i) {
         for (std::size_t j = 0; j < n; ++j) {
             aux[i] += vec[j] * rotateBegin[i][j];
             // accesing iterator as if it were a matrix
         }
     }
-    std::swap(aux, vec);
+    std::swap(aux, vec); // swapping result to back to vec
 }
 
 // const VectorRange is misleading. Value of iterators can change, the position
@@ -62,31 +60,54 @@ void justShift(const VectorRange& x, double shiftRate)
         std::bind(std::multiplies<double>(), std::placeholders::_1, shiftRate));
 }
 
+void shift(const std::vector<double>& x, std::vector<double>& aux,
+           const vector_begin shiftBegin, bool shiftFlag)
+{
+    if (shiftFlag) [[likely]] {
+        shiftfunc(x, aux, shiftBegin);
+    } else [[unlikely]] {
+        std::copy(x.begin(), x.end(), aux.begin());
+    }
+}
+
+// TODO: move function into utils header and make it generic with constraints
+// (and constexpr)
+void multiplyVectorWithScalar(std::vector<double>& vec, double scalar)
+{
+    std::transform(
+        std::execution::unseq, vec.begin(), vec.end(), vec.begin(),
+        std::bind(std::multiplies<double>(), std::placeholders::_1, scalar));
+}
+
+void rotate(std::vector<double>& vec, const matrix_begin rotateBegin,
+            bool rotateFlag)
+{
+    if (rotateFlag) [[likely]] {
+        rotatefunc(vec, rotateBegin);
+    }
+}
+
 void shiftRotateTransform(const std::vector<double>& x,
                           std::vector<double>& aux,
                           const vector_begin shiftBegin,
                           const matrix_begin rotateBegin, double shiftRate,
                           bool shiftFlag, bool rotateFlag)
 {
-    // We better provide different overloads for each situation, instead of
-    // having conditionals in this function
-    if (shiftFlag) [[likely]] {
-        shiftfunc(x, aux, shiftBegin);
-    } else [[unlikely]] {
-        std::copy(x.begin(), x.end(), aux.begin());
-    }
+    // shift rotate transform with shift rate != 1.0
+    shift(x, aux, shiftBegin, shiftFlag);
+    multiplyVectorWithScalar(aux, shiftRate);
+    rotate(aux, rotateBegin, rotateFlag);
+}
 
-    // should we check if shift rate is 1.0? Or should we provide a different
-    // overload without shift rate?
-    std::transform(
-        aux.begin(), aux.end(), aux.begin(),
-        std::bind(std::multiplies<double>(), std::placeholders::_1, shiftRate));
-
-    if (rotateFlag) [[likely]] {
-        auto aux2 = aux; // TODO: add another aux vector
-        rotatefunc(aux, aux2, rotateBegin);
-    }
-    // print_vec(aux);
+void shiftRotateTransform(const std::vector<double>& x,
+                          std::vector<double>& aux,
+                          const vector_begin shiftBegin,
+                          const matrix_begin rotateBegin, bool shiftFlag,
+                          bool rotateFlag)
+{
+    // shift rotate transform with shiftRate = 1.0
+    shift(x, aux, shiftBegin, shiftFlag);
+    rotate(aux, rotateBegin, rotateFlag);
 }
 
 void shiftRotateTransform(const std::vector<double>& x,
@@ -99,13 +120,28 @@ void shiftRotateTransform(const std::vector<double>& x,
                          shiftFlag, rotateFlag);
 }
 
-void applyPermutation(std::vector<double>& nums, std::vector<double>& aux,
+void shiftRotateTransform(const std::vector<double>& x,
+                          std::vector<double>& aux,
+                          const std::vector<double>& shift,
+                          const std::vector<std::vector<double>>& rotate,
+                          bool shiftFlag, bool rotateFlag)
+{
+    shiftRotateTransform(x, aux, shift.cbegin(), rotate.cbegin(), shiftFlag,
+                         rotateFlag);
+}
+
+void applyPermutation(std::vector<double>& nums,
                       const std::vector<std::size_t>& indices)
 {
-    // assuming indices.size() == nums.size() == aux.size()
-    std::transform(indices.begin(), indices.end(), aux.begin(),
+    auto aux = std::vector<double>{};
+    aux.reserve(indices.size());
+
+    // assuming indices.size() == nums.size()
+    std::transform(indices.begin(), indices.end(), std::back_inserter(aux),
                    [&](auto i) { return nums[i]; });
-    nums.swap(aux);
+
+    // moving result of permutation to nums
+    std::swap(aux, nums);
 }
 
 template <std::size_t Size>
@@ -147,9 +183,7 @@ double compositionFunctionCalculator(const std::vector<double>& x,
 
     return std::inner_product(
         w.begin(), w.end(), fit.begin(), 0.0, std::plus<double>(),
-        [=](auto w, auto fit) {
-            return w / w_sum * fit;
-        }); // TODO: verify if w_sum can be divided at last
+        [=](auto w, auto fit) { return w / w_sum * fit; });
 }
 
 } // namespace
@@ -173,8 +207,9 @@ double ackley_func(const std::vector<double>& x, std::vector<double>& aux,
                    const std::vector<std::vector<double>>& rotate,
                    bool shiftFlag, bool rotateFlag)
 {
-    shiftRotateTransform(x, aux, shift.cbegin(), rotate.cbegin(), 1.0,
-                         shiftFlag, rotateFlag);
+    // shift rate is 1.0
+    shiftRotateTransform(x, aux, shift.cbegin(), rotate.cbegin(), shiftFlag,
+                         rotateFlag);
 
     return do_ackley_func({aux.begin(), aux.end()});
 }
@@ -189,11 +224,10 @@ double ackley_func(const VectorRange& x)
 double do_bent_cigar_func(const VectorRange& x)
 {
     // assuming x.size() >= 1
-    return std::accumulate(std::next(x.begin), x.end, (*x.begin) * (*x.begin),
-                           [](auto f, auto elem) {
-                               return f + elem * elem * 1000000.0;
-                           }); // 1000000.0 = std::pow(10.0, 6.0)
-    // TODO: accumulate vs reduce?
+    return std::reduce(std::next(x.begin), x.end, (*x.begin) * (*x.begin),
+                       [](auto f, auto elem) {
+                           return f + elem * elem * 1000000.0;
+                       }); // 1000000.0 = std::pow(10.0, 6.0)
 }
 
 double bent_cigar_func(const VectorRange& x)
@@ -208,7 +242,8 @@ bent_cigar_func(const std::vector<double>& x, std::vector<double>& aux,
                 const vector_begin shiftBegin, const matrix_begin rotateBegin,
                 bool shiftFlag, bool rotateFlag)
 {
-    shiftRotateTransform(x, aux, shiftBegin, rotateBegin, 1.0, shiftFlag,
+    // shift rate is 1.0
+    shiftRotateTransform(x, aux, shiftBegin, rotateBegin, shiftFlag,
                          rotateFlag);
 
     return do_bent_cigar_func({aux.begin(), aux.end()});
@@ -228,13 +263,14 @@ discus_func(const std::vector<double>& x, std::vector<double>& aux,
             const vector_begin shiftBegin, const matrix_begin rotateBegin,
             bool shiftFlag, bool rotateFlag)
 {
-    shiftRotateTransform(x, aux, shiftBegin, rotateBegin, 1.0, shiftFlag,
+    // shift rate is 1.0
+    shiftRotateTransform(x, aux, shiftBegin, rotateBegin, shiftFlag,
                          rotateFlag);
     // 1000000.0 = std::pow(10.0, 6.0)
     // assuming x.size() >= 1
-    return std::accumulate(std::next(aux.begin()), aux.end(),
-                           aux[0] * aux[0] * 1000000.0,
-                           [](auto f, auto elem) { return f + elem * elem; });
+    return std::reduce(std::next(aux.begin()), aux.end(),
+                       aux[0] * aux[0] * 1000000.0,
+                       [](auto f, auto elem) { return f + elem * elem; });
 }
 
 double discus_func(const std::vector<double>& x, std::vector<double>& aux,
@@ -251,7 +287,8 @@ ellips_func(const std::vector<double>& x, std::vector<double>& aux,
             const vector_begin shiftBegin, const matrix_begin rotateBegin,
             bool shiftFlag, bool rotateFlag)
 {
-    shiftRotateTransform(x, aux, shiftBegin, rotateBegin, 1.0, shiftFlag,
+    // shift rate is 1.0
+    shiftRotateTransform(x, aux, shiftBegin, rotateBegin, shiftFlag,
                          rotateFlag);
     // here we need to accumulate because reduce does not maintain order
     return std::accumulate(
@@ -275,16 +312,15 @@ escaffer6_func(const std::vector<double>& x, std::vector<double>& aux,
                const vector_begin shiftBegin, const matrix_begin rotateBegin,
                bool shiftFlag, bool rotateFlag)
 {
-    shiftRotateTransform(x, aux, shiftBegin, rotateBegin, 1.0, shiftFlag,
+    // shift rate is 1.0
+    shiftRotateTransform(x, aux, shiftBegin, rotateBegin, shiftFlag,
                          rotateFlag);
 
     const auto n = aux.size();
     auto f = 0.0;
-
     for (std::size_t i = 0; i < n - 1; ++i) {
         const auto xi = aux[i] * aux[i];
         const auto xinext = aux[i + 1] * aux[i + 1];
-        // TODO: test in godbolt xi&xinext against code without them
         const auto temp1 = std::sin(std::sqrt(xi + xinext));
         const auto temp2 = 1.0 + 0.001 * (xi + xinext);
         f += 0.5 + (temp1 * temp1 - 0.5) / (temp2 * temp2);
@@ -317,10 +353,9 @@ griewank_func(const std::vector<double>& x, std::vector<double>& aux,
     shiftRotateTransform(x, aux, shiftBegin, rotateBegin, 600.0 / 100.0,
                          shiftFlag, rotateFlag);
 
-    // TODO: n
     auto s = 0.0;
     auto p = 1.0;
-    for (std::size_t i = 0; i < aux.size(); ++i) {
+    for (std::size_t i = 0, n = aux.size(); i < n; ++i) {
         s += aux[i] * aux[i];
         p *= std::cos(aux[i] / std::sqrt(1.0 + i));
     }
@@ -459,7 +494,7 @@ rosenbrock_func(const std::vector<double>& x, std::vector<double>& aux,
     shiftRotateTransform(x, aux, shiftBegin, rotateBegin, 2.048 / 100.0,
                          shiftFlag, rotateFlag);
     auto f = 0.0;
-    for (std::size_t i = 0; i < aux.size() - 1; ++i) {
+    for (std::size_t i = 0, n = aux.size() - 1; i < n; ++i) {
         const auto temp = aux[i] + 1.0;
         const auto temp1 = temp * temp - aux[i + 1] - 1.0;
         f += 100.0 * temp1 * temp1 + aux[i] * aux[i];
@@ -478,12 +513,11 @@ double rosenbrock_func(const std::vector<double>& x, std::vector<double>& aux,
 
 double do_rastrigin_func(const VectorRange& x)
 {
-    // accumulate vs reduce
-    return std::accumulate(x.begin, x.end, std::distance(x.begin, x.end) * 10.0,
-                           [=](auto f, auto elem) {
-                               return f + elem * elem -
-                                      10.0 * std::cos(2.0 * PI * elem);
-                           });
+    return std::reduce(x.begin, x.end, std::distance(x.begin, x.end) * 10.0,
+                       [=](auto f, auto elem) {
+                           return f + elem * elem -
+                                  10.0 * std::cos(2.0 * PI * elem);
+                       });
 }
 
 double
@@ -517,7 +551,7 @@ double do_schwefel_func(const VectorRange& x)
 {
     const auto n = std::distance(x.begin, x.end);
     return 4.189828872724338e+002 * n +
-           std::accumulate(x.begin, x.end, 0.0, [=](auto f, auto elem) {
+           std::reduce(x.begin, x.end, 0.0, [=](auto f, auto elem) {
                const auto xi = elem + 4.209687462275036e+002;
                if (xi > 500.0) {
                    const auto temp1 =
@@ -571,7 +605,7 @@ double do_schaffer_F7_func(const VectorRange& x)
 
     for (auto it = x.begin; it != end;) {
         const auto temp1 = *it;
-        std::advance(it, 1); // TODO: vs ++it
+        std::advance(it, 1);
         const auto temp2 = *it;
         const auto si = std::sqrt(temp1 * temp1 + temp2 * temp2);
         const auto temp = std::sin(50.0 * std::pow(si, 0.2));
@@ -580,7 +614,8 @@ double do_schaffer_F7_func(const VectorRange& x)
     }
 
     const auto n = std::distance(x.begin, x.end) - 1;
-    return f * f / n / n;
+    f = f * f / n / n;
+    return f;
 }
 
 double schaffer_F7_func(const std::vector<double>& x, std::vector<double>& aux,
@@ -589,7 +624,8 @@ double schaffer_F7_func(const std::vector<double>& x, std::vector<double>& aux,
                         bool shiftFlag, [[maybe_unused]] bool rotateFlag)
 {
     // schaffer_F7_func is wrong, it's not rotated
-    shiftRotateTransform(x, aux, shift, rotate, 1.0, shiftFlag, false);
+    // shift rate is 1.0
+    shiftRotateTransform(x, aux, shift, rotate, shiftFlag, false);
 
     return do_schaffer_F7_func({aux.begin(), aux.end()});
 }
@@ -607,9 +643,6 @@ step_rastrigin_func(const std::vector<double>& x, std::vector<double>& aux,
                     const std::vector<std::vector<double>>& rotate,
                     bool shiftFlag, bool rotateFlag)
 {
-    // ??? is exactly rastrigin
-    // TODO: maybe remove shift and rotate flag and always shift and rotate
-    // see h01
     return rastrigin_func(x, aux, shift, rotate, shiftFlag, rotateFlag);
 }
 
@@ -619,7 +652,8 @@ double levy_func(const std::vector<double>& x, std::vector<double>& aux,
                  bool rotateFlag)
 {
     // min is 1.49966e-32, close to 0
-    shiftRotateTransform(x, aux, shift, rotate, 1.0, shiftFlag, rotateFlag);
+    // shift rate is 1.0
+    shiftRotateTransform(x, aux, shift, rotate, shiftFlag, rotateFlag);
 
     // Correct is (elem - 1.0), but it does not provide a minumum close to 0
     const auto w = [](auto elem) { return 1.0 + (elem - 0.0) / 4.0; };
@@ -642,11 +676,12 @@ double zakharov_func(const std::vector<double>& x, std::vector<double>& aux,
                      const std::vector<std::vector<double>>& rotate,
                      bool shiftFlag, bool rotateFlag)
 {
-    shiftRotateTransform(x, aux, shift, rotate, 1.0, shiftFlag, rotateFlag);
+    // shift rate is 1.0
+    shiftRotateTransform(x, aux, shift, rotate, shiftFlag, rotateFlag);
 
     auto sum1 = 0.0;
     auto sum2 = 0.0;
-    for (std::size_t i = 0; i < aux.size(); ++i) {
+    for (std::size_t i = 0, n = aux.size(); i < n; ++i) {
         sum1 += aux[i] * aux[i];
         sum2 += 0.5 * i * aux[i];
     }
@@ -697,9 +732,9 @@ hf01(const std::vector<double>& x, std::vector<double>& aux,
      const std::vector<std::size_t>& indices, bool shiftFlag, bool rotateFlag)
 {
     // [0.4, 0.4, 0.2]
-    shiftRotateTransform(x, aux, shift, rotate, 1.0, shiftFlag, rotateFlag);
-    auto aux2 = aux; // TODO: see if we can use a 2nd aux vector
-    applyPermutation(aux, aux2, indices);
+    // shift rate is 1.0
+    shiftRotateTransform(x, aux, shift, rotate, shiftFlag, rotateFlag);
+    applyPermutation(aux, indices);
 
     const auto limit = std::ceil(0.4 * aux.size());
     const auto margin_1 = std::next(aux.begin(), limit); // 0.4
@@ -721,11 +756,10 @@ hf02(const std::vector<double>& x, std::vector<double>& aux,
      const std::vector<std::size_t>& indices, bool shiftFlag, bool rotateFlag)
 {
     // [0.1, 0.2, 0.2, 0.2, 0.1, 0.2]
-    shiftRotateTransform(x, aux, shift, rotate, 1.0, shiftFlag, rotateFlag);
-    auto aux2 = aux;
-    applyPermutation(aux, aux2, indices);
+    // shift rate is 1.0
+    shiftRotateTransform(x, aux, shift, rotate, shiftFlag, rotateFlag);
+    applyPermutation(aux, indices);
 
-    // TODO: n
     const auto limit1 = std::ceil(0.1 * aux.size());
     const auto limit2 = std::ceil(0.2 * aux.size());
 
@@ -757,9 +791,9 @@ hf03(const std::vector<double>& x, std::vector<double>& aux,
      const std::vector<std::size_t>& indices, bool shiftFlag, bool rotateFlag)
 {
     //  [0.3, 0.2, 0.2, 0.1, 0.2]
-    shiftRotateTransform(x, aux, shift, rotate, 1.0, shiftFlag, rotateFlag);
-    auto aux2 = aux;
-    applyPermutation(aux, aux2, indices);
+    // shift rate is 1.0
+    shiftRotateTransform(x, aux, shift, rotate, shiftFlag, rotateFlag);
+    applyPermutation(aux, indices);
 
     const auto limit1 = std::ceil(0.1 * aux.size());
     const auto limit2 = std::ceil(0.2 * aux.size());
@@ -803,8 +837,6 @@ double cf01(const std::vector<double>& x, std::vector<double>& aux,
     // lambda is 1, 1e-6, 1e-6, 1e-6, 1e-6
     // lambda in their implementation is 1, 1e-6, 1e-26, 1e-6, 1e-6
     // bias is 0, 200, 300, 100, 400
-
-    // print_vec(shift);
 
     const std::array<double, N> fit{
         rosenbrock_func(x, aux, shift.cbegin(), rotate.cbegin(), true,
