@@ -283,7 +283,7 @@ FunctionManager::FunctionManager(
     , maxFes{dimensions == 10 ? 200'000 : 1'000'000}
     , epsilon{maxExpsilon}
     , function{initFunction(functionName, dimensions, shiftFlag, rotateFlag)}
-    , cache{maxFes, cacheRestrievalStrategy}
+    , cache{maxFes, dimensions, cacheRestrievalStrategy}
 // clang-format on
 {
     if ((rotateFlag or shiftFlag) and dimensions != 10 and dimensions != 20) {

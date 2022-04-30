@@ -46,7 +46,7 @@ class KDTreeCache
 
     KDTreeCache() = delete;
 
-    KDTreeCache(int maxFES, CacheRetrievalStrategy type)
+    KDTreeCache(int maxFES, int dimensions, CacheRetrievalStrategy type) : kdtree{static_cast<std::size_t>(dimensions)}
     {
         points.reserve(maxFES);
         values.reserve(maxFES);
@@ -78,7 +78,7 @@ class KDTreeCache
     void recreate()
     {
         const auto timer = utils::timer::Timer{"Recreate KDTree"};
-        kdtree = KDTree(points);
+        kdtree.rebuild(points);
     }
 
     void insert(const point_t& point, double value)
