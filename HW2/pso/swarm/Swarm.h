@@ -56,6 +56,9 @@ class Swarm
     void updateBest();
     void updateInertia();
     void selectNewPopulation();
+    void mutatePopulation();
+    void crossOver(int indexPair1, int indexPair2);
+    void crossOverPopulation();
     void endIteration();
 
     double getStaticRingBest(std::size_t index, std::size_t dimension) const;
@@ -64,6 +67,8 @@ class Swarm
     // TODO: use seed from file
     std::mt19937_64 gen;
     std::uniform_real_distribution<double> randomDouble{0.0, 1.0};
+    std::uniform_int_distribution<int> randomInt{0, 1};
+    std::uniform_int_distribution<int> randomFromDimensions;
     std::uniform_real_distribution<double> randomFromDomain{
         utils::constants::minimum, utils::constants::maximum};
     std::uniform_real_distribution<double> randomFromDomainRange{
@@ -93,6 +98,7 @@ class Swarm
     std::vector<std::vector<double>> aux;
     std::vector<std::vector<double>> populationVelocity;
     std::vector<std::vector<double>> populationPastBests;
+    std::vector<std::vector<bool>> topologyChromosomes;
     std::vector<double> populationInertia;
     std::vector<double> evaluations;
     std::vector<double> populationFitness;

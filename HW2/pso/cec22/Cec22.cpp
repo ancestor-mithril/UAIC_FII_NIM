@@ -224,7 +224,7 @@ double ackley_func(const VectorRange& x)
 double do_bent_cigar_func(const VectorRange& x)
 {
     // assuming x.size() >= 1
-    return std::reduce(std::next(x.begin), x.end, (*x.begin) * (*x.begin),
+    return std::accumulate(std::next(x.begin), x.end, (*x.begin) * (*x.begin),
                        [](auto f, auto elem) {
                            return f + elem * elem * 1000000.0;
                        }); // 1000000.0 = std::pow(10.0, 6.0)
@@ -268,7 +268,7 @@ discus_func(const std::vector<double>& x, std::vector<double>& aux,
                          rotateFlag);
     // 1000000.0 = std::pow(10.0, 6.0)
     // assuming x.size() >= 1
-    return std::reduce(std::next(aux.begin()), aux.end(),
+    return std::accumulate(std::next(aux.begin()), aux.end(),
                        aux[0] * aux[0] * 1000000.0,
                        [](auto f, auto elem) { return f + elem * elem; });
 }
@@ -513,7 +513,7 @@ double rosenbrock_func(const std::vector<double>& x, std::vector<double>& aux,
 
 double do_rastrigin_func(const VectorRange& x)
 {
-    return std::reduce(x.begin, x.end, std::distance(x.begin, x.end) * 10.0,
+    return std::accumulate(x.begin, x.end, std::distance(x.begin, x.end) * 10.0,
                        [=](auto f, auto elem) {
                            return f + elem * elem -
                                   10.0 * std::cos(2.0 * PI * elem);
@@ -551,7 +551,7 @@ double do_schwefel_func(const VectorRange& x)
 {
     const auto n = std::distance(x.begin, x.end);
     return 4.189828872724338e+002 * n +
-           std::reduce(x.begin, x.end, 0.0, [=](auto f, auto elem) {
+           std::accumulate(x.begin, x.end, 0.0, [=](auto f, auto elem) {
                const auto xi = elem + 4.209687462275036e+002;
                if (xi > 500.0) {
                    const auto temp1 =
