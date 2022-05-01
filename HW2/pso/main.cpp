@@ -31,13 +31,13 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     // runDefault();
     // runTest();
 
-    // runExperiment(10, 100, 0.3, 1.0, 3.0, 0.1, 0.001,
-    // cacheStrategy::FirstNeighbor,
-    //               pso::swarm::topology::StaticRing);
+    runExperiment(10, 100, 0.3, 1.0, 3.0, 0.1, 0.001,
+    cacheStrategy::FirstNeighbor,
+                  pso::swarm::topology::StaticRing);
 
     //timeTest();
 
-    fineTuning(argc, argv);
+    //fineTuning(argc, argv);
     return 0;
 }
 
@@ -92,8 +92,9 @@ runOnce(std::string_view functionName, int dimensions, int resetThreshold,
 {
     auto pso = pso::PSO(
         {
-            SwarmParameters{50, 20, 0.1, 0.5, 2.0, 0.01, 0.0, pso::swarm::topology::StaticRing, false, true},
-            SwarmParameters{50, 20, 0.1, 1.5, 2.0, 0.01, 0.001, pso::swarm::topology::StaticRing, false, true},
+            SwarmParameters{300, 100, 0.5, 2.0, 1.5, 0.1, 0.01, pso::swarm::topology::Star, true, false},
+            SwarmParameters{300, 200, 0.1, 1.5, 2.0, 0.01, 0.01, pso::swarm::topology::StaticRing, true, false},
+            SwarmParameters{300, 200, 0.1, 1.5, 2.0, 0.01, 0.01, pso::swarm::topology::StaticRing, true, false}
         },
         functionName, dimensions, cacheRetrievalStrategy, true, true);
 

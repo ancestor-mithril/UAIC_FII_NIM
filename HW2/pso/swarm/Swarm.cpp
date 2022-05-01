@@ -25,6 +25,13 @@ void randomizeVector(std::vector<double>& v,
     randomizeVector(v, dist, gen, 1);
 }
 
+void randomizeVector(std::vector<bool>& v,
+                     std::uniform_int_distribution<int>& dist,
+                     std::mt19937_64& gen)
+{
+    std::generate(v.begin(), v.end(), [&]() { return dist(gen); });
+}
+
 std::string vecToString(const std::vector<double>& v)
 {
     using namespace std::string_literals;
@@ -61,6 +68,7 @@ Swarm::Swarm(
     , chaosCoef{parameters.chaosCoef}
     , swarmTopology{parameters.topology_}
     , selection{parameters.selection}
+    , randomFromDimensions{0, dimensions}
 // clang-format on
 {
     getJitter = [&]() -> std::function<double()> {
@@ -80,6 +88,8 @@ Swarm::Swarm(
         populationSize, std::vector<double>(dimensions));
     populationPastBests = std::vector<std::vector<double>>(
         populationSize, std::vector<double>(dimensions));
+    topologyChromosomes = std::vector<std::vector<bool>>(
+        populationSize, std::vector<bool>(dimensions));
     populationInertia = std::vector<double>(populationSize);
     evaluations = std::vector<double>(populationSize);
     populationFitness = std::vector<double>(populationSize);
@@ -99,15 +109,19 @@ Swarm::Swarm(
     std::iota(neighbors.begin(), neighbors.end(), -1);
     neighbors[0] = populationSize - 1;
     neighbors[neighbors.size() - 1] = 0;
+
+    for(auto i = 0; i < populationSize; ++i) {
+        randomizeVector(topologyChromosomes[i], randomInt, gen);
+    }
 }
 
 double Swarm::getVisibleBest(int index, int dimensions)
 {
     // TODO : use strategy
-    if (swarmTopology == topology::StaticRing) {
+    if (topologyChromosomes[index][dimensions] == 0) {
         return getStaticRingBest(index, dimensions);
     }
-    if (swarmTopology == topology::Star) {
+    if (topologyChromosomes[index][dimensions] == 1) {
         return getStarBest(index, dimensions);
     }
     throw std::runtime_error("Not implemented topology");
@@ -145,6 +159,8 @@ void Swarm::updatePopulation(const std::vector<double>& swarmsBest)
     checkForPopulationReset();
     selectNewPopulation();
     mutate();
+    mutatePopulation();
+    crossOverPopulation();
     updateVelocity(swarmsBest);
     evaluate();
     updateBest();
@@ -189,6 +205,9 @@ void Swarm::selectNewPopulation()
     std::vector<std::vector<double>> newVelocity =
         std::vector<std::vector<double>>(populationSize,
                                          std::vector<double>(dimensions));
+    std::vector<std::vector<bool>> newTopology =
+        std::vector<std::vector<bool>>(populationSize,
+                                         std::vector<bool>(dimensions));
 
     for (auto i = 0; i < populationSize; ++i) {
         sortedPopulation.push_back(std::make_pair(populationFitness[i], i));
@@ -202,6 +221,9 @@ void Swarm::selectNewPopulation()
                            .second];
         newVelocity[i] =
             populationVelocity[sortedPopulation[sortedPopulation.size() - i - 1]
+                                   .second];
+        newTopology[i] =
+            topologyChromosomes[sortedPopulation[sortedPopulation.size() - i - 1]
                                    .second];
     }
 
@@ -217,10 +239,65 @@ void Swarm::selectNewPopulation()
         }
         newPopulation[i] = population[selected];
         newVelocity[i] = populationVelocity[selected];
+        newTopology[i] = topologyChromosomes[selected];
     }
 
     population = newPopulation;
     populationVelocity = newVelocity;
+    topologyChromosomes = newTopology;
+}
+
+void Swarm::mutatePopulation()
+{
+    auto elites = 0.0 * populationSize;
+    auto mutationProbability = 0.001;
+
+    for (int i = elites / 2; i < populationSize; ++i)
+	{
+		for (int j = 0; j < dimensions; ++j)
+		{
+			if (randomDouble(gen) < mutationProbability)
+			{
+				topologyChromosomes[i][j] = 1 - topologyChromosomes[i][j];
+			}
+		}
+	}
+}
+
+void Swarm::crossOver(int indexPair1, int indexPair2)
+{
+	auto cutOff = randomFromDimensions(gen);
+
+	for (auto i = cutOff; i < dimensions; ++i)
+	{
+		std::swap(topologyChromosomes[indexPair1][i], topologyChromosomes[indexPair2][i]);
+	}
+}
+
+void Swarm::crossOverPopulation()
+{
+    auto crossOverProbability = 0.7;
+    auto availablePair = false;
+	auto indexPair1 = 0;
+    auto indexPair2 = 0;
+
+	for (auto i = 0; i < populationSize; ++i)
+	{
+		if (randomDouble(gen) < crossOverProbability)
+		{
+			if (availablePair)
+			{
+				availablePair = false;
+				indexPair2 = i;
+				this->crossOver(indexPair1, indexPair2);
+			}
+			else
+			{
+				availablePair = true;
+				indexPair1 = i;
+			}
+		}
+	}
 }
 
 void Swarm::checkForPopulationReset()
