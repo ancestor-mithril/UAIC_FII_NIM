@@ -48,17 +48,19 @@ class Swarm
     std::string getBestVector() const;
 
   private:
-    void checkForPopulationReset();
-    void resetPopulation();
+    void checkForParticlesReset();
+    void resetParticles();
     void updateVelocity(const std::vector<double>& swarmsBest);
-    void mutate();
+    void mutateParticles();
     void evaluate();
     void updateBest();
     void updateInertia();
     void selectNewPopulation();
-    void mutatePopulation();
-    void crossOver(int indexPair1, int indexPair2);
-    void crossOverPopulation();
+    void mutateTopologies();
+    void crossOverTwoTopologies(int indexPair1, int indexPair2);
+    void crossOverTopologies();
+    void crossOverTwoParticles(int indexPair1, int indexPair2);
+    void crossOverParticles();
     void endIteration();
 
     double getStaticRingBest(std::size_t index, std::size_t dimension) const;

@@ -32,7 +32,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
     // runTest();
 
     runExperiment(10, 100, 0.3, 1.0, 3.0, 0.1, 0.001,
-    cacheStrategy::FirstNeighbor,
+    cacheStrategy::WorstNeighbor,
                   pso::swarm::topology::StaticRing);
 
     //timeTest();
@@ -92,9 +92,24 @@ runOnce(std::string_view functionName, int dimensions, int resetThreshold,
 {
     auto pso = pso::PSO(
         {
-            SwarmParameters{300, 100, 0.5, 2.0, 1.5, 0.1, 0.01, pso::swarm::topology::Star, true, false},
-            SwarmParameters{300, 200, 0.1, 1.5, 2.0, 0.01, 0.01, pso::swarm::topology::StaticRing, true, false},
-            SwarmParameters{300, 200, 0.1, 1.5, 2.0, 0.01, 0.01, pso::swarm::topology::StaticRing, true, false}
+            SwarmParameters{20, 100, 0.5, 2.0, 1.5, 0.1, 0.01, pso::swarm::topology::Star, true, true},
+            SwarmParameters{50, 200, 0.1, 1.5, 2.0, 0.01, 0.01, pso::swarm::topology::StaticRing, true, false},
+            SwarmParameters{80, 200, 0.1, 1.5, 2.0, 0.01, 0.01, pso::swarm::topology::StaticRing, true, false},
+            SwarmParameters{20, 100, 0.5, 2.0, 1.5, 0.1, 0.01, pso::swarm::topology::Star, true, true},
+            SwarmParameters{50, 200, 0.1, 1.5, 2.0, 0.01, 0.01, pso::swarm::topology::StaticRing, true, false},
+            SwarmParameters{80, 200, 0.1, 1.5, 2.0, 0.01, 0.01, pso::swarm::topology::StaticRing, true, false},
+            SwarmParameters{20, 100, 0.5, 2.0, 1.5, 0.1, 0.01, pso::swarm::topology::Star, true, true},
+            SwarmParameters{50, 200, 0.1, 1.5, 2.0, 0.01, 0.01, pso::swarm::topology::StaticRing, true, false},
+            SwarmParameters{80, 200, 0.1, 1.5, 2.0, 0.01, 0.01, pso::swarm::topology::StaticRing, true, false},
+            SwarmParameters{20, 100, 0.5, 2.0, 1.5, 0.1, 0.01, pso::swarm::topology::Star, true, true},
+            SwarmParameters{50, 200, 0.1, 1.5, 2.0, 0.01, 0.01, pso::swarm::topology::StaticRing, true, false},
+            SwarmParameters{80, 200, 0.1, 1.5, 2.0, 0.01, 0.01, pso::swarm::topology::StaticRing, true, false},
+            SwarmParameters{20, 100, 0.5, 2.0, 1.5, 0.1, 0.01, pso::swarm::topology::Star, true, true},
+            SwarmParameters{50, 200, 0.1, 1.5, 2.0, 0.01, 0.01, pso::swarm::topology::StaticRing, true, false},
+            SwarmParameters{80, 200, 0.1, 1.5, 2.0, 0.01, 0.01, pso::swarm::topology::StaticRing, true, false},
+            SwarmParameters{20, 100, 0.5, 2.0, 1.5, 0.1, 0.01, pso::swarm::topology::Star, true, true},
+            SwarmParameters{50, 200, 0.1, 1.5, 2.0, 0.01, 0.01, pso::swarm::topology::StaticRing, true, false},
+            SwarmParameters{80, 200, 0.1, 1.5, 2.0, 0.01, 0.01, pso::swarm::topology::StaticRing, true, false},
         },
         functionName, dimensions, cacheRetrievalStrategy, true, true);
 

@@ -32,6 +32,10 @@ class FunctionManager
     {
         return cacheHits;
     }
+    int getMaxFes() const
+    {
+        return maxFes;
+    }
     double getMinimum() const
     {
         return minimum;
