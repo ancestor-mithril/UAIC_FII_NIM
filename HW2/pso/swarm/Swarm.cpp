@@ -101,7 +101,7 @@ Swarm::Swarm(
     indices.resize(populationSize);
     std::iota(indices.begin(), indices.end(), 0);
     // indices are used in here
-    resetPopulation();
+    resetParticles();
 
     neighbors.resize(populationSize + 2);
 
@@ -127,7 +127,7 @@ double Swarm::getVisibleBest(int index, int dimensions)
     throw std::runtime_error("Not implemented topology");
 }
 
-void Swarm::resetPopulation()
+void Swarm::resetParticles()
 {
     std::for_each(indices.begin(), indices.end(), [&](const auto i) {
         randomizeVector(population[i], randomFromDomain, gen);
@@ -156,15 +156,16 @@ std::string Swarm::getBestVector() const
 
 void Swarm::updatePopulation(const std::vector<double>& swarmsBest)
 {
-    checkForPopulationReset();
+    checkForParticlesReset();
     selectNewPopulation();
-    mutate();
-    mutatePopulation();
-    crossOverPopulation();
+    mutateTopologies();
+    //crossOverTopologies();
+    mutateParticles();
+    crossOverParticles();
     updateVelocity(swarmsBest);
     evaluate();
     updateBest();
-    updateInertia();
+    //updateInertia();
     endIteration();
 }
 
@@ -247,7 +248,7 @@ void Swarm::selectNewPopulation()
     topologyChromosomes = newTopology;
 }
 
-void Swarm::mutatePopulation()
+void Swarm::mutateTopologies()
 {
     auto elites = 0.0 * populationSize;
     auto mutationProbability = 0.001;
@@ -264,7 +265,7 @@ void Swarm::mutatePopulation()
 	}
 }
 
-void Swarm::crossOver(int indexPair1, int indexPair2)
+void Swarm::crossOverTwoTopologies(int indexPair1, int indexPair2)
 {
 	auto cutOff = randomFromDimensions(gen);
 
@@ -274,7 +275,7 @@ void Swarm::crossOver(int indexPair1, int indexPair2)
 	}
 }
 
-void Swarm::crossOverPopulation()
+void Swarm::crossOverTopologies()
 {
     auto crossOverProbability = 0.7;
     auto availablePair = false;
@@ -289,7 +290,7 @@ void Swarm::crossOverPopulation()
 			{
 				availablePair = false;
 				indexPair2 = i;
-				this->crossOver(indexPair1, indexPair2);
+				this->crossOverTwoTopologies(indexPair1, indexPair2);
 			}
 			else
 			{
@@ -300,11 +301,49 @@ void Swarm::crossOverPopulation()
 	}
 }
 
-void Swarm::checkForPopulationReset()
+void Swarm::crossOverTwoParticles(int indexPair1, int indexPair2)
+{
+    auto cutOff = randomFromDimensions(gen);
+
+	for (auto i = cutOff; i < dimensions; ++i)
+	{
+		std::swap(population[indexPair1][i], population[indexPair2][i]);
+        std::swap(populationVelocity[indexPair1][i], populationVelocity[indexPair2][i]);
+        std::swap(topologyChromosomes[indexPair1][i], topologyChromosomes[indexPair2][i]);
+	}
+}
+
+void Swarm::crossOverParticles()
+{
+    auto crossOverProbability = 0.1;
+    auto availablePair = false;
+	auto indexPair1 = 0;
+    auto indexPair2 = 0;
+
+	for (auto i = 0; i < populationSize; ++i)
+	{
+		if (randomDouble(gen) < crossOverProbability)
+		{
+			if (availablePair)
+			{
+				availablePair = false;
+				indexPair2 = i;
+				this->crossOverTwoParticles(indexPair1, indexPair2);
+			}
+			else
+			{
+				availablePair = true;
+				indexPair1 = i;
+			}
+		}
+	}
+}
+
+void Swarm::checkForParticlesReset()
 {
     if (lastImprovement > resetThreshold) {
         // std::cout << "Reset at epoch: " << currentEpoch << std::endl;
-        resetPopulation();
+        resetParticles();
     }
 }
 
@@ -313,9 +352,10 @@ void Swarm::endIteration()
     ++currentEpoch;
     ++lastImprovement; // if we had improvement, it was already reset to 0,
                        // now it's 1
+    inertia = 0.001 * exp(1 / (1 + 7 * function.missCount() /function.getMaxFes()));
 }
 
-void Swarm::mutate()
+void Swarm::mutateParticles()
 {
     // TODO: generate positions
     if (chaosCoef <= 0.0) {
@@ -350,7 +390,7 @@ void Swarm::updateVelocity(const std::vector<double>& swarmsBest)
                 // necessary to iterate through all particles all dimensions, we
                 // can generate the positions that are going to be mutated
                 populationVelocity[i][d] =
-                    rInertia * populationInertia[i] * populationVelocity[i][d] +
+                    inertia * populationVelocity[i][d] +
                     cognition * rCognition *
                         (populationPastBests[i][d] - population[i][d]) +
                     social * rSocial *
@@ -424,9 +464,10 @@ void Swarm::updateInertia()
     std::transform(std::execution::unseq, evaluations.begin(),
                    evaluations.end(), populationInertia.begin(),
                    [&](const auto evaluation) {
-                       return (inertia + (1.0 - (globalBestEval / evaluation)) *
-                                             (1.0 - inertia)) *
-                              randomDouble(gen);
+                    //    return (inertia + (1.0 - (globalBestEval / evaluation)) *
+                    //                          (1.0 - inertia)) *
+                    //           randomDouble(gen);
+                        return inertia;
                    });
 }
 

@@ -92,14 +92,12 @@ class KDTreeCache
     std::optional<double> retrieve(const point_t& point, double epsilon)
     {
         const auto timer = utils::timer::Timer{"KDTree nearest index"};
-        try {
-            const auto [index, value] = kdtree.nearestIndexAndValue(point);
-            if (value < epsilon) {
-                return values[index];
-            }
-        } catch (const std::logic_error& e) {
-            // root is empty
+        const auto index = kdtree.nearestIndexWithinRange(point, epsilon);
+
+        if (index) {
+            return values[*index];
         }
+        
         return std::nullopt;
     }
 
